@@ -9,7 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 
 from app.database import Base
 from app.models import User, OrgUnit, Budget, Forecast, Actual, JobCatalog, Requisition, Offer
-from app.utils.security import get_password_hash
+# Use a simple hash for tests to avoid bcrypt issues
+def get_test_password_hash(password: str) -> str:
+    from hashlib import sha256
+    return sha256(password.encode()).hexdigest()
 
 
 # Use SQLite for tests (sync compatible with async)
@@ -65,7 +68,7 @@ async def user(db_session: AsyncSession, org_unit: OrgUnit) -> User:
     user = User(
         email="test@example.com",
         name="Test User",
-        password_hash=get_password_hash("password123"),
+        password_hash=get_test_password_hash("password123"),
         role="MANAGER",
         org_unit_id=org_unit.id
     )
