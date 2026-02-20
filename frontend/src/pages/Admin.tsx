@@ -10,11 +10,12 @@ import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import BudgetManager from '../components/BudgetManager';
 
-type Tab = 'catalog' | 'users' | 'org-units';
+type Tab = 'budget' | 'catalog' | 'users' | 'org-units';
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState<Tab>('catalog');
+  const [activeTab, setActiveTab] = useState<Tab>('budget');
   const [jobs, setJobs] = useState<JobCatalog[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
@@ -164,6 +165,7 @@ export default function Admin() {
   };
 
   const tabs = [
+    { id: 'budget' as Tab, label: 'Orçamento' },
     { id: 'catalog' as Tab, label: 'Job Catalog' },
     { id: 'users' as Tab, label: 'Users' },
     { id: 'org-units' as Tab, label: 'Org Units' },
@@ -196,6 +198,9 @@ export default function Admin() {
           ))}
         </nav>
       </div>
+
+      {/* Budget Tab */}
+      {activeTab === 'budget' && <BudgetManager />}
 
       {/* Job Catalog Tab */}
       {activeTab === 'catalog' && (
