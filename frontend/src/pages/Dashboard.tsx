@@ -32,6 +32,7 @@ interface ChartData {
   alocado: number;
   naoAlocado: number;
   simulacao: number;
+  excedente: number;
 }
 
 // Generate all months for a year
@@ -108,6 +109,13 @@ export default function Dashboard() {
   // Calculate overhead multiplier
   const overheadMultiplier = selectedOrgUnitData?.overhead_multiplier || 1.8;
 
+  // Find last known actual to project forward
+  const lastKnownActual = useMemo(() => {
+    if (actuals.length === 0) return 0;
+    const sorted = [...actuals].sort((a, b) => b.month.localeCompare(a.month));
+    return sorted[0].amount;
+  }, [actuals]);
+
   // Build chart data
   const chartData = useMemo<ChartData[]>(() => {
     return months.map((month) => {
@@ -115,19 +123,24 @@ export default function Dashboard() {
       const actual = actuals.find((a) => a.month === month);
 
       const budgetAmount = budget?.approved_amount || 0;
-      const alocadoAmount = actual?.amount || 0;
+      // Use actual if exists, otherwise project last known actual forward
+      const alocadoAmount = actual?.amount || lastKnownActual;
 
       // Calculate simulation impact for this month
       const simulationAmount = simulations.reduce((sum, sim) => {
         if (sim.startMonth <= month) {
-          // Apply overhead multiplier to simulation cost
           return sum + sim.monthlyCost * overheadMultiplier;
         }
         return sum;
       }, 0);
 
-      // naoAlocado = budget - alocado - simulacao (but not negative)
-      const naoAlocado = Math.max(0, budgetAmount - alocadoAmount - simulationAmount);
+      // Check if over budget
+      const total = alocadoAmount + simulationAmount;
+      const overBudget = Math.max(0, total - budgetAmount);
+      const simulacaoWithinBudget = Math.max(0, simulationAmount - overBudget);
+
+      // naoAlocado = budget - alocado - simulacaoWithinBudget (but not negative)
+      const naoAlocado = Math.max(0, budgetAmount - alocadoAmount - simulacaoWithinBudget);
 
       return {
         month,
@@ -135,10 +148,11 @@ export default function Dashboard() {
         budget: budgetAmount,
         alocado: alocadoAmount,
         naoAlocado,
-        simulacao: simulationAmount,
+        simulacao: simulacaoWithinBudget,
+        excedente: overBudget,
       };
     });
-  }, [months, budgets, actuals, simulations, overheadMultiplier]);
+  }, [months, budgets, actuals, simulations, overheadMultiplier, lastKnownActual]);
 
   // Get selected job details
   const selectedJobData = jobs.find((j) => j.id === selectedJob);
@@ -253,6 +267,11 @@ export default function Dashboard() {
           <p className="text-sm text-yellow-600">
             Simulação: <span className="font-medium">{formatCurrency(data.simulacao)}</span>
           </p>
+          {data.excedente > 0 && (
+            <p className="text-sm text-red-600 font-bold">
+              ⚠️ Excedente: <span>{formatCurrency(data.excedente)}</span>
+            </p>
+          )}
         </div>
       );
     }
@@ -342,6 +361,12 @@ export default function Dashboard() {
                   name="Simulação"
                   stackId="a"
                   fill="#eab308"
+                />
+                <Bar
+                  dataKey="excedente"
+                  name="Excedente (acima do orçamento)"
+                  stackId="a"
+                  fill="#ef4444"
                 />
               </BarChart>
             </ResponsiveContainer>
