@@ -1,70 +1,263 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { orgUnitsApi, offersApi } from '../api/client';
-import type { OrgUnit, OrgUnitSummary, Offer } from '../types';
-import { formatCurrency, formatMonth, getStatusColor, getStatusEmoji } from '../utils/format';
+import { useEffect, useState, useMemo } from 'react';
+import { orgUnitsApi, budgetsApi, actualsApi, jobCatalogApi, requisitionsApi } from '../api/client';
+import type { OrgUnit, Budget, Actual, JobCatalog } from '../types';
+import { formatCurrency, formatMonth } from '../utils/format';
 import Card from '../components/ui/Card';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
 import {
-  ExclamationTriangleIcon,
-  DocumentCheckIcon,
-  PlusIcon,
-} from '@heroicons/react/24/outline';
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+import { PlusIcon, TrashIcon, DocumentPlusIcon } from '@heroicons/react/24/outline';
+
+interface Simulation {
+  id: string;
+  jobCatalogId: string;
+  jobTitle: string;
+  startMonth: string;
+  monthlyCost: number;
+}
+
+interface ChartData {
+  month: string;
+  monthLabel: string;
+  budget: number;
+  alocado: number;
+  naoAlocado: number;
+  simulacao: number;
+}
+
+// Generate all months for a year
+const generateMonths = (year: number) => {
+  return Array.from({ length: 12 }, (_, i) => {
+    const month = (i + 1).toString().padStart(2, '0');
+    return `${year}-${month}`;
+  });
+};
 
 export default function Dashboard() {
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
   const [selectedOrgUnit, setSelectedOrgUnit] = useState<string>('');
-  const [summary, setSummary] = useState<OrgUnitSummary | null>(null);
-  const [pendingOffers, setPendingOffers] = useState<Offer[]>([]);
+  const [selectedOrgUnitData, setSelectedOrgUnitData] = useState<OrgUnit | null>(null);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [actuals, setActuals] = useState<Actual[]>([]);
+  const [jobs, setJobs] = useState<JobCatalog[]>([]);
+  const [simulations, setSimulations] = useState<Simulation[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Simulator form state
+  const [selectedJob, setSelectedJob] = useState<string>('');
+  const [selectedStartMonth, setSelectedStartMonth] = useState<string>('2026-02');
+  const [creatingRequisition, setCreatingRequisition] = useState(false);
+
+  const currentYear = 2026; // The year we're working with based on seed data
+  const months = generateMonths(currentYear);
+
   useEffect(() => {
-    loadOrgUnits();
+    loadInitialData();
   }, []);
 
   useEffect(() => {
     if (selectedOrgUnit) {
-      loadSummary(selectedOrgUnit);
-      loadPendingOffers(selectedOrgUnit);
+      loadOrgUnitData(selectedOrgUnit);
     }
   }, [selectedOrgUnit]);
 
-  const loadOrgUnits = async () => {
+  const loadInitialData = async () => {
     try {
-      const data = await orgUnitsApi.list();
-      setOrgUnits(data);
-      if (data.length > 0) {
-        setSelectedOrgUnit(data[0].id);
+      const [orgsData, jobsData] = await Promise.all([
+        orgUnitsApi.list(),
+        jobCatalogApi.list({ active: true }),
+      ]);
+      setOrgUnits(orgsData);
+      setJobs(jobsData);
+      if (orgsData.length > 0) {
+        setSelectedOrgUnit(orgsData[0].id);
+        setSelectedOrgUnitData(orgsData[0]);
       }
     } catch (error) {
-      console.error('Failed to load org units:', error);
+      console.error('Failed to load initial data:', error);
     }
   };
 
-  const loadSummary = async (orgUnitId: string) => {
+  const loadOrgUnitData = async (orgUnitId: string) => {
     setLoading(true);
     try {
-      const data = await orgUnitsApi.getSummary(orgUnitId);
-      setSummary(data);
+      const [budgetsData, actualsData, orgData] = await Promise.all([
+        budgetsApi.list(orgUnitId),
+        actualsApi.list(orgUnitId),
+        orgUnitsApi.get(orgUnitId),
+      ]);
+      setBudgets(budgetsData);
+      setActuals(actualsData);
+      setSelectedOrgUnitData(orgData);
     } catch (error) {
-      console.error('Failed to load summary:', error);
+      console.error('Failed to load org unit data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadPendingOffers = async (orgUnitId: string) => {
+  // Calculate overhead multiplier
+  const overheadMultiplier = selectedOrgUnitData?.overhead_multiplier || 1.8;
+
+  // Build chart data
+  const chartData = useMemo<ChartData[]>(() => {
+    return months.map((month) => {
+      const budget = budgets.find((b) => b.month === month);
+      const actual = actuals.find((a) => a.month === month);
+
+      const budgetAmount = budget?.approved_amount || 0;
+      const alocadoAmount = actual?.amount || 0;
+
+      // Calculate simulation impact for this month
+      const simulationAmount = simulations.reduce((sum, sim) => {
+        if (sim.startMonth <= month) {
+          // Apply overhead multiplier to simulation cost
+          return sum + sim.monthlyCost * overheadMultiplier;
+        }
+        return sum;
+      }, 0);
+
+      // naoAlocado = budget - alocado - simulacao (but not negative)
+      const naoAlocado = Math.max(0, budgetAmount - alocadoAmount - simulationAmount);
+
+      return {
+        month,
+        monthLabel: formatMonth(month),
+        budget: budgetAmount,
+        alocado: alocadoAmount,
+        naoAlocado,
+        simulacao: simulationAmount,
+      };
+    });
+  }, [months, budgets, actuals, simulations, overheadMultiplier]);
+
+  // Get selected job details
+  const selectedJobData = jobs.find((j) => j.id === selectedJob);
+
+  // Add simulation
+  const handleAddSimulation = () => {
+    if (!selectedJob || !selectedStartMonth || !selectedJobData) return;
+
+    const newSim: Simulation = {
+      id: crypto.randomUUID(),
+      jobCatalogId: selectedJob,
+      jobTitle: selectedJobData.title,
+      startMonth: selectedStartMonth,
+      monthlyCost: selectedJobData.monthly_cost,
+    };
+
+    setSimulations([...simulations, newSim]);
+    setSelectedJob('');
+  };
+
+  // Remove simulation
+  const handleRemoveSimulation = (id: string) => {
+    setSimulations(simulations.filter((s) => s.id !== id));
+  };
+
+  // Create requisition from simulation
+  const handleCreateRequisition = async (simulation: Simulation) => {
+    setCreatingRequisition(true);
     try {
-      const data = await offersApi.list({ org_unit_id: orgUnitId, status: 'PROPOSED' });
-      setPendingOffers(data);
+      await requisitionsApi.create({
+        org_unit_id: selectedOrgUnit,
+        job_catalog_id: simulation.jobCatalogId,
+        title: simulation.jobTitle,
+        priority: 'P2',
+        target_start_month: simulation.startMonth,
+      });
+      // Remove the simulation after creating requisition
+      handleRemoveSimulation(simulation.id);
+      alert('Requisição criada com sucesso!');
     } catch (error) {
-      console.error('Failed to load offers:', error);
+      console.error('Failed to create requisition:', error);
+      alert('Erro ao criar requisição');
+    } finally {
+      setCreatingRequisition(false);
     }
   };
 
-  const alertMonths = summary?.months.filter((m) => m.status !== 'green') || [];
+  // Create all simulations as requisitions
+  const handleCreateAllRequisitions = async () => {
+    if (simulations.length === 0) return;
+    
+    setCreatingRequisition(true);
+    try {
+      await Promise.all(
+        simulations.map((sim) =>
+          requisitionsApi.create({
+            org_unit_id: selectedOrgUnit,
+            job_catalog_id: sim.jobCatalogId,
+            title: sim.jobTitle,
+            priority: 'P2',
+            target_start_month: sim.startMonth,
+          })
+        )
+      );
+      setSimulations([]);
+      alert(`${simulations.length} requisição(ões) criada(s) com sucesso!`);
+    } catch (error) {
+      console.error('Failed to create requisitions:', error);
+      alert('Erro ao criar requisições');
+    } finally {
+      setCreatingRequisition(false);
+    }
+  };
+
+  // Total simulation cost per month (with overhead)
+  const totalSimulationCost = useMemo(() => {
+    if (simulations.length === 0) return 0;
+    return simulations.reduce((sum, sim) => sum + sim.monthlyCost * overheadMultiplier, 0);
+  }, [simulations, overheadMultiplier]);
+
+  // Month options for simulator
+  const monthOptions = months.map((m) => ({
+    value: m,
+    label: formatMonth(m),
+  }));
+
+  // Job options for simulator
+  const jobOptions = [
+    { value: '', label: 'Selecione um cargo...' },
+    ...jobs.map((j) => ({
+      value: j.id,
+      label: `${j.title} - ${formatCurrency(j.monthly_cost)} (c/ overhead: ${formatCurrency(j.monthly_cost * overheadMultiplier)})`,
+    })),
+  ];
+
+  // Custom tooltip for chart
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0]?.payload as ChartData;
+      return (
+        <div className="bg-white p-3 border rounded-lg shadow-lg">
+          <p className="font-medium text-gray-900 mb-2">{label}</p>
+          <p className="text-sm text-gray-600">
+            Budget: <span className="font-medium">{formatCurrency(data.budget)}</span>
+          </p>
+          <p className="text-sm text-green-600">
+            Alocado: <span className="font-medium">{formatCurrency(data.alocado)}</span>
+          </p>
+          <p className="text-sm text-blue-600">
+            Não Alocado: <span className="font-medium">{formatCurrency(data.naoAlocado)}</span>
+          </p>
+          <p className="text-sm text-yellow-600">
+            Simulação: <span className="font-medium">{formatCurrency(data.simulacao)}</span>
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="space-y-6">
@@ -78,129 +271,190 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Alert Cards */}
+      {/* Info Card */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-l-4 border-l-green-500">
+          <div>
+            <h3 className="font-medium text-gray-900">Overhead Multiplier</h3>
+            <p className="text-2xl font-bold text-green-600">{overheadMultiplier}x</p>
+            <p className="text-sm text-gray-500">Aplicado aos custos do catálogo</p>
+          </div>
+        </Card>
         <Card className="border-l-4 border-l-yellow-500">
-          <div className="flex items-start">
-            <ExclamationTriangleIcon className="w-6 h-6 text-yellow-500 mr-3" />
-            <div>
-              <h3 className="font-medium text-gray-900">Budget Alerts</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                {alertMonths.length > 0
-                  ? `${alertMonths.length} month(s) need attention`
-                  : 'All months looking healthy'}
-              </p>
-            </div>
+          <div>
+            <h3 className="font-medium text-gray-900">Simulações Ativas</h3>
+            <p className="text-2xl font-bold text-yellow-600">{simulations.length}</p>
+            <p className="text-sm text-gray-500">
+              Custo mensal: {formatCurrency(totalSimulationCost)}
+            </p>
           </div>
         </Card>
-
-        <Card className="border-l-4 border-l-primary-500">
-          <div className="flex items-start">
-            <DocumentCheckIcon className="w-6 h-6 text-primary-500 mr-3" />
-            <div>
-              <h3 className="font-medium text-gray-900">Pending Offers</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                {pendingOffers.length} offer(s) awaiting decision
-              </p>
-            </div>
+        <Card className="border-l-4 border-l-blue-500">
+          <div>
+            <h3 className="font-medium text-gray-900">Meses com Budget</h3>
+            <p className="text-2xl font-bold text-blue-600">{budgets.length}</p>
+            <p className="text-sm text-gray-500">
+              Actuals registrados: {actuals.length}
+            </p>
           </div>
         </Card>
-
-        <div className="flex space-x-2">
-          <Link to="/requisitions" className="flex-1">
-            <Button variant="secondary" className="w-full">
-              <PlusIcon className="w-4 h-4 mr-2" />
-              New Requisition
-            </Button>
-          </Link>
-          <Link to="/offers" className="flex-1">
-            <Button className="w-full">View Offer Gate</Button>
-          </Link>
-        </div>
       </div>
 
-      {/* Budget Summary Table */}
-      <Card title="Budget Summary by Month">
+      {/* Stacked Bar Chart */}
+      <Card title="Visão Orçamentária Anual">
         {loading ? (
           <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Month
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Approved
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Baseline
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Source
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Committed
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Pipeline
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Remaining
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {summary?.months.map((month) => (
-                  <tr key={month.month} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {formatMonth(month.month)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
-                      {formatCurrency(month.approved)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
-                      {formatCurrency(month.baseline)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
-                      <Badge
-                        color={
-                          month.baseline_source === 'actual'
-                            ? 'bg-green-100 text-green-800'
-                            : month.baseline_source === 'forecast'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-600'
-                        }
-                      >
-                        {month.baseline_source}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
-                      {formatCurrency(month.committed)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-500">
-                      {formatCurrency(month.pipeline_potential)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                      {formatCurrency(month.remaining)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-center">
-                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(month.status)}`}>
-                        {getStatusEmoji(month.status)} {month.status.toUpperCase()}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="h-96">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="monthLabel" />
+                <YAxis
+                  tickFormatter={(value) =>
+                    new Intl.NumberFormat('pt-BR', {
+                      notation: 'compact',
+                      compactDisplay: 'short',
+                    }).format(value)
+                  }
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Bar
+                  dataKey="alocado"
+                  name="Alocado"
+                  stackId="a"
+                  fill="#22c55e"
+                />
+                <Bar
+                  dataKey="naoAlocado"
+                  name="Não Alocado"
+                  stackId="a"
+                  fill="#3b82f6"
+                />
+                <Bar
+                  dataKey="simulacao"
+                  name="Simulação"
+                  stackId="a"
+                  fill="#eab308"
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         )}
+      </Card>
+
+      {/* Simulator */}
+      <Card title="Simulador de Novas Vagas">
+        <div className="space-y-4">
+          {/* Add simulation form */}
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="flex-1 min-w-[250px]">
+              <Select
+                label="Cargo"
+                options={jobOptions}
+                value={selectedJob}
+                onChange={(e) => setSelectedJob(e.target.value)}
+              />
+            </div>
+            <div className="w-40">
+              <Select
+                label="Mês de Entrada"
+                options={monthOptions}
+                value={selectedStartMonth}
+                onChange={(e) => setSelectedStartMonth(e.target.value)}
+              />
+            </div>
+            <Button
+              onClick={handleAddSimulation}
+              disabled={!selectedJob || !selectedStartMonth}
+            >
+              <PlusIcon className="w-4 h-4 mr-2" />
+              Adicionar
+            </Button>
+          </div>
+
+          {/* Selected job info */}
+          {selectedJobData && (
+            <div className="p-3 bg-gray-50 rounded-lg text-sm">
+              <span className="text-gray-600">Custo base: </span>
+              <span className="font-medium">{formatCurrency(selectedJobData.monthly_cost)}</span>
+              <span className="text-gray-600"> → Com overhead ({overheadMultiplier}x): </span>
+              <span className="font-medium text-primary-600">
+                {formatCurrency(selectedJobData.monthly_cost * overheadMultiplier)}
+              </span>
+              <span className="text-gray-500"> /mês</span>
+            </div>
+          )}
+
+          {/* Simulations list */}
+          {simulations.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-medium text-gray-700">Simulações Ativas:</h4>
+              <div className="divide-y border rounded-lg">
+                {simulations.map((sim) => (
+                  <div
+                    key={sim.id}
+                    className="flex items-center justify-between p-3 hover:bg-gray-50"
+                  >
+                    <div>
+                      <span className="font-medium text-gray-900">{sim.jobTitle}</span>
+                      <span className="text-gray-500 mx-2">•</span>
+                      <span className="text-sm text-gray-600">
+                        Início: {formatMonth(sim.startMonth)}
+                      </span>
+                      <span className="text-gray-500 mx-2">•</span>
+                      <span className="text-sm font-medium text-primary-600">
+                        {formatCurrency(sim.monthlyCost * overheadMultiplier)}/mês
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleCreateRequisition(sim)}
+                        disabled={creatingRequisition}
+                      >
+                        <DocumentPlusIcon className="w-4 h-4 mr-1" />
+                        Criar Vaga
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleRemoveSimulation(sim.id)}
+                      >
+                        <TrashIcon className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Create all button */}
+              <div className="flex justify-end pt-2">
+                <Button
+                  onClick={handleCreateAllRequisitions}
+                  disabled={creatingRequisition || simulations.length === 0}
+                  loading={creatingRequisition}
+                >
+                  <DocumentPlusIcon className="w-4 h-4 mr-2" />
+                  Registrar Todas as Vagas ({simulations.length})
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {simulations.length === 0 && (
+            <p className="text-sm text-gray-500 text-center py-4">
+              Adicione simulações para visualizar o impacto no gráfico acima.
+            </p>
+          )}
+        </div>
       </Card>
     </div>
   );
