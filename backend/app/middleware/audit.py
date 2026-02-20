@@ -1,9 +1,33 @@
+import json
 import uuid
+from decimal import Decimal
 from typing import Any, Optional
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog
+
+
+class _AuditEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return str(o)
+        if isinstance(o, uuid.UUID):
+            return str(o)
+        return super().default(o)
+
+
+def _sanitize_changes(data: Any) -> Any:
+    """Convert non-JSON-serializable types in changes dict."""
+    if isinstance(data, dict):
+        return {k: _sanitize_changes(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [_sanitize_changes(v) for v in data]
+    if isinstance(data, Decimal):
+        return str(data)
+    if isinstance(data, uuid.UUID):
+        return str(data)
+    return data
 
 
 async def create_audit_log(
@@ -21,7 +45,7 @@ async def create_audit_log(
         action=action,
         entity_type=entity_type,
         entity_id=entity_id,
-        changes=changes,
+        changes=_sanitize_changes(changes) if changes else None,
         ip_address=ip_address
     )
     db.add(audit)
