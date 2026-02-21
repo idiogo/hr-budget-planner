@@ -1,15 +1,85 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { orgUnitsApi, budgetsApi, actualsApi } from '../api/client';
 import type { OrgUnit, Budget, Actual } from '../types';
 import { formatMonth } from '../utils/format';
 import Card from './ui/Card';
-import Button from './ui/Button';
 import Select from './ui/Select';
-import Input from './ui/Input';
-import { CheckIcon, PencilIcon } from '@heroicons/react/24/outline';
 
 const generateMonths = (year: number) =>
   Array.from({ length: 12 }, (_, i) => `${year}-${(i + 1).toString().padStart(2, '0')}`);
+
+function formatBRL(value: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
+interface EditableCellProps {
+  value: number;
+  onSave: (val: number) => Promise<void>;
+  placeholder?: string;
+}
+
+function EditableCell({ value, onSave, placeholder = '0,00' }: EditableCellProps) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const startEdit = () => {
+    setText(value ? String(value) : '');
+    setEditing(true);
+    setTimeout(() => inputRef.current?.select(), 50);
+  };
+
+  const save = async () => {
+    const parsed = parseFloat(text.replace(/[^\d.,]/g, '').replace(',', '.'));
+    if (!isNaN(parsed) && parsed > 0 && parsed !== value) {
+      setSaving(true);
+      try {
+        await onSave(parsed);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setSaving(false);
+      }
+    }
+    setEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') save();
+    if (e.key === 'Escape') setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type="text"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={save}
+        onKeyDown={handleKeyDown}
+        disabled={saving}
+        className="w-40 px-2 py-1 border border-blue-400 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
+        autoFocus
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={startEdit}
+      className={`w-40 px-2 py-1 text-right text-sm rounded cursor-pointer transition-colors
+        ${value > 0
+          ? 'text-gray-900 hover:bg-blue-50 hover:text-blue-700'
+          : 'text-gray-400 hover:bg-gray-100 italic'
+        }`}
+      title="Clique para editar"
+    >
+      {value > 0 ? formatBRL(value) : placeholder}
+    </button>
+  );
+}
 
 export default function BudgetManager() {
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
@@ -17,11 +87,6 @@ export default function BudgetManager() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [actuals, setActuals] = useState<Actual[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState<string | null>(null);
-
-  // Editable state: month -> { budget, actual }
-  const [editBudget, setEditBudget] = useState<Record<string, string>>({});
-  const [editActual, setEditActual] = useState<Record<string, string>>({});
 
   const year = 2026;
   const months = generateMonths(year);
@@ -46,50 +111,34 @@ export default function BudgetManager() {
       ]);
       setBudgets(b);
       setActuals(a);
-      // Init edit state
-      const bMap: Record<string, string> = {};
-      const aMap: Record<string, string> = {};
-      months.forEach((m) => {
-        const budget = b.find((x: Budget) => x.month === m);
-        const actual = a.find((x: Actual) => x.month === m);
-        bMap[m] = budget ? String(budget.approved_amount) : '';
-        aMap[m] = actual ? String(actual.amount) : '';
-      });
-      setEditBudget(bMap);
-      setEditActual(aMap);
     } finally {
       setLoading(false);
     }
   };
 
-  const saveBudget = async (month: string) => {
-    const val = parseFloat(editBudget[month]);
-    if (isNaN(val) || val <= 0) return;
-    setSaving(`budget-${month}`);
-    try {
-      await budgetsApi.create(selectedOrgUnit, { month, approved_amount: val });
-      await loadData();
-    } catch (e: any) {
-      // If already exists, try update via PATCH or just reload
-      console.error(e);
-    } finally {
-      setSaving(null);
-    }
+  const saveBudget = async (month: string, val: number) => {
+    await budgetsApi.create(selectedOrgUnit, { month, approved_amount: val });
+    await loadData();
   };
 
-  const saveActual = async (month: string) => {
-    const val = parseFloat(editActual[month]);
-    if (isNaN(val) || val <= 0) return;
-    setSaving(`actual-${month}`);
-    try {
-      await actualsApi.create(selectedOrgUnit, { month, amount: val });
-      await loadData();
-    } catch (e: any) {
-      console.error(e);
-    } finally {
-      setSaving(null);
-    }
+  const saveActual = async (month: string, val: number) => {
+    await actualsApi.create(selectedOrgUnit, { month, amount: val });
+    await loadData();
   };
+
+  const getBudgetValue = (month: string) => {
+    const b = budgets.find((x) => x.month === month);
+    return b ? Number(b.approved_amount) : 0;
+  };
+
+  const getActualValue = (month: string) => {
+    const a = actuals.find((x) => x.month === month);
+    return a ? Number(a.amount) : 0;
+  };
+
+  // Totals
+  const totalBudget = months.reduce((s, m) => s + getBudgetValue(m), 0);
+  const totalActual = months.reduce((s, m) => s + getActualValue(m), 0);
 
   return (
     <div className="space-y-4">
@@ -109,74 +158,66 @@ export default function BudgetManager() {
         </div>
       ) : (
         <Card title="Orçamento e Realizado — Mês a Mês">
+          <p className="text-sm text-gray-500 mb-4">Clique em qualquer valor para editar.</p>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mês</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Orçamento Aprovado (R$)</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase"></th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Realizado (R$)</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase"></th>
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase w-24">Mês</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Orçamento Aprovado</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Realizado</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Diferença</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody>
                 {months.map((month) => {
-                  const hasBudget = budgets.some((b) => b.month === month);
-                  const hasActual = actuals.some((a) => a.month === month);
+                  const budgetVal = getBudgetValue(month);
+                  const actualVal = getActualValue(month);
+                  const diff = budgetVal - actualVal;
                   return (
-                    <tr key={month} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                    <tr key={month} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="px-4 py-2 text-sm font-medium text-gray-900">
                         {formatMonth(month)}
                       </td>
-                      <td className="px-4 py-3">
-                        <Input
-                          type="number"
-                          value={editBudget[month] || ''}
-                          onChange={(e) =>
-                            setEditBudget({ ...editBudget, [month]: e.target.value })
-                          }
-                          placeholder="0.00"
-                          className="w-48"
+                      <td className="px-4 py-2 text-right">
+                        <EditableCell
+                          value={budgetVal}
+                          onSave={(val) => saveBudget(month, val)}
+                          placeholder="Definir orçamento..."
                         />
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <Button
-                          size="sm"
-                          variant={hasBudget ? 'secondary' : 'primary'}
-                          onClick={() => saveBudget(month)}
-                          loading={saving === `budget-${month}`}
-                          disabled={!editBudget[month]}
-                        >
-                          {hasBudget ? <PencilIcon className="w-4 h-4" /> : <CheckIcon className="w-4 h-4" />}
-                        </Button>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Input
-                          type="number"
-                          value={editActual[month] || ''}
-                          onChange={(e) =>
-                            setEditActual({ ...editActual, [month]: e.target.value })
-                          }
-                          placeholder="0.00"
-                          className="w-48"
+                      <td className="px-4 py-2 text-right">
+                        <EditableCell
+                          value={actualVal}
+                          onSave={(val) => saveActual(month, val)}
+                          placeholder="Definir realizado..."
                         />
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <Button
-                          size="sm"
-                          variant={hasActual ? 'secondary' : 'primary'}
-                          onClick={() => saveActual(month)}
-                          loading={saving === `actual-${month}`}
-                          disabled={!editActual[month]}
-                        >
-                          {hasActual ? <PencilIcon className="w-4 h-4" /> : <CheckIcon className="w-4 h-4" />}
-                        </Button>
+                      <td className="px-4 py-2 text-right text-sm">
+                        {budgetVal > 0 ? (
+                          <span className={`font-medium ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {diff >= 0 ? '+' : ''}{formatBRL(diff)}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-gray-300 bg-gray-50">
+                  <td className="px-4 py-3 text-sm font-bold text-gray-900">Total</td>
+                  <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">{formatBRL(totalBudget)}</td>
+                  <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">{formatBRL(totalActual)}</td>
+                  <td className="px-4 py-3 text-right text-sm font-bold">
+                    <span className={totalBudget - totalActual >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {totalBudget - totalActual >= 0 ? '+' : ''}{formatBRL(totalBudget - totalActual)}
+                    </span>
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </Card>
