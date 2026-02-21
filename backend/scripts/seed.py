@@ -88,12 +88,17 @@ async def seed_database():
         await db.flush()
         print(f"Created {len(jobs)} job catalog entries")
         
-        # 4. Create Budgets Jan-Jun 2026
-        budget_amounts = [850000, 880000, 900000, 920000, 950000, 980000]
-        for i, amount in enumerate(budget_amounts, 1):
+        # 4. Create Budgets Jan-Dec 2026 (valores reais)
+        budget_amounts = {
+            "2026-01": 10457000, "2026-02": 9925000,  "2026-03": 10017000,
+            "2026-04": 10295000, "2026-05": 10257000, "2026-06": 10254000,
+            "2026-07": 10683000, "2026-08": 11499000, "2026-09": 11094000,
+            "2026-10": 11937000, "2026-11": 11433000, "2026-12": 11513000,
+        }
+        for month, amount in budget_amounts.items():
             budget = Budget(
                 org_unit_id=org_unit.id,
-                month=f"2026-{i:02d}",
+                month=month,
                 approved_amount=Decimal(str(amount))
             )
             db.add(budget)
@@ -101,12 +106,33 @@ async def seed_database():
         await db.flush()
         print(f"Created {len(budget_amounts)} budgets")
         
-        # 5. Create Forecasts Jan-Mar 2026
-        forecast_amounts = [780000, 810000, 850000]
-        for i, amount in enumerate(forecast_amounts, 1):
+        # 5. Create Actuals Jan-Dec 2026 (valores reais)
+        actual_amounts = {
+            "2026-01": 10251000, "2026-02": 9818000,  "2026-03": 9931000,
+            "2026-04": 10295000, "2026-05": 10257000, "2026-06": 10254000,
+            "2026-07": 10683000, "2026-08": 11499000, "2026-09": 11094000,
+            "2026-10": 11937000, "2026-11": 11433000, "2026-12": 11513000,
+        }
+        for month, amount in actual_amounts.items():
+            actual = Actual(
+                org_unit_id=org_unit.id,
+                month=month,
+                amount=Decimal(str(amount)),
+                finalized=month <= "2026-03"  # first 3 months finalized
+            )
+            db.add(actual)
+        
+        await db.flush()
+        print(f"Created {len(actual_amounts)} actuals")
+        
+        # 6. Create Forecasts Jan-Mar 2026
+        forecast_amounts = {
+            "2026-01": 10251000, "2026-02": 9818000, "2026-03": 9931000,
+        }
+        for month, amount in forecast_amounts.items():
             forecast = Forecast(
                 org_unit_id=org_unit.id,
-                month=f"2026-{i:02d}",
+                month=month,
                 amount=Decimal(str(amount)),
                 source="manual"
             )
@@ -114,17 +140,6 @@ async def seed_database():
         
         await db.flush()
         print(f"Created {len(forecast_amounts)} forecasts")
-        
-        # 6. Create Actual Jan 2026
-        actual = Actual(
-            org_unit_id=org_unit.id,
-            month="2026-01",
-            amount=Decimal("775000"),
-            finalized=True
-        )
-        db.add(actual)
-        await db.flush()
-        print("Created actual for 2026-01")
         
         # 7. Create Requisitions
         job_senior = next(j for j in jobs if j.level == "Senior" and j.job_family == "Engineering")
