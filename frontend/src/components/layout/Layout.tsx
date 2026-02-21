@@ -17,10 +17,10 @@ interface LayoutProps {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: HomeIcon },
-  { name: 'Requisitions', href: '/requisitions', icon: BriefcaseIcon },
-  { name: 'Offer Gate', href: '/offers', icon: DocumentCheckIcon },
-  { name: 'Admin', href: '/admin', icon: Cog6ToothIcon, adminOnly: true },
+  { name: 'Painel', href: '/', icon: HomeIcon },
+  { name: 'Requisições', href: '/requisitions', icon: BriefcaseIcon },
+  { name: 'Priorização de Propostas', href: '/offers', icon: DocumentCheckIcon },
+  { name: 'Configuração', href: '/admin', icon: Cog6ToothIcon, adminOnly: true },
 ];
 
 export default function Layout({ children }: LayoutProps) {
@@ -45,7 +45,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="fixed inset-0 z-50 bg-gray-900/50" onClick={() => setMobileMenuOpen(false)} />
         <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl">
           <div className="flex items-center justify-between p-4 border-b">
-            <span className="text-lg font-semibold text-primary-600">HR Budget</span>
+            <span className="text-lg font-semibold text-primary-600">Planejamento RH</span>
             <button onClick={() => setMobileMenuOpen(false)}>
               <XMarkIcon className="w-6 h-6" />
             </button>
@@ -75,7 +75,7 @@ export default function Layout({ children }: LayoutProps) {
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex flex-col flex-1 bg-white border-r">
           <div className="flex items-center h-16 px-6 border-b">
-            <span className="text-xl font-bold text-primary-600">HR Budget</span>
+            <span className="text-xl font-bold text-primary-600">Planejamento RH</span>
           </div>
           <nav className="flex-1 p-4 space-y-1">
             {filteredNav.map((item) => (
@@ -111,7 +111,7 @@ export default function Layout({ children }: LayoutProps) {
               className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100"
             >
               <ArrowRightOnRectangleIcon className="w-5 h-5 mr-3" />
-              Logout
+              Sair
             </button>
           </div>
         </div>
@@ -124,7 +124,7 @@ export default function Layout({ children }: LayoutProps) {
           <button onClick={() => setMobileMenuOpen(true)}>
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <span className="ml-4 text-lg font-semibold text-primary-600">HR Budget</span>
+          <span className="ml-4 text-lg font-semibold text-primary-600">Planejamento RH</span>
         </div>
 
         <main className="p-4 lg:p-8">{children}</main>

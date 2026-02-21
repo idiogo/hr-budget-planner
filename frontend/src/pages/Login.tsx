@@ -21,7 +21,7 @@ export default function Login() {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      setError('Invalid email or password');
+      setError('Email ou senha inválidos');
     } finally {
       setLoading(false);
     }
@@ -31,8 +31,8 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-primary-600">HR Budget Planner</h1>
-          <p className="mt-2 text-gray-600">Sign in to your account</p>
+          <h1 className="text-3xl font-bold text-primary-600">Planejamento RH</h1>
+          <p className="mt-2 text-gray-600">Entre na sua conta</p>
         </div>
 
         <form className="mt-8 space-y-6 bg-white p-8 rounded-lg shadow" onSubmit={handleSubmit}>
@@ -53,7 +53,7 @@ export default function Login() {
             />
 
             <Input
-              label="Password"
+              label="Senha"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -63,11 +63,11 @@ export default function Login() {
           </div>
 
           <Button type="submit" className="w-full" loading={loading}>
-            Sign in
+            Entrar
           </Button>
 
           <p className="text-center text-sm text-gray-500">
-            Demo credentials: admin@example.com / password123
+            Credenciais de demonstração: admin@example.com / password123
           </p>
         </form>
       </div>

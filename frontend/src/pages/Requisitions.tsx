@@ -362,7 +362,7 @@ export default function Requisitions() {
             { value: 'DRAFT', label: 'Rascunho' },
             { value: 'OPEN', label: 'Aberta' },
             { value: 'INTERVIEWING', label: 'Em Entrevista' },
-            { value: 'OFFER_PENDING', label: 'Oferta Pendente' },
+            { value: 'OFFER_PENDING', label: 'Proposta Pendente' },
             { value: 'FILLED', label: 'Preenchida' },
             { value: 'CANCELLED', label: 'Cancelada' },
           ]}
@@ -525,7 +525,7 @@ export default function Requisitions() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Select
-            label="Unidade Organizacional"
+            label="Área"
             options={orgUnits.map((ou) => ({ value: ou.id, label: ou.name }))}
             value={formData.org_unit_id}
             onChange={(e) => setFormData({ ...formData, org_unit_id: e.target.value })}
@@ -576,7 +576,7 @@ export default function Requisitions() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
             <textarea
               className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 px-3 py-2 text-sm"
               rows={3}

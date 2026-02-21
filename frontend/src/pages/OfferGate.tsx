@@ -235,8 +235,8 @@ export default function OfferGate() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Offer Gate</h1>
-          <p className="text-gray-500 mt-1">Decide which offers to approve with real-time budget impact</p>
+          <h1 className="text-2xl font-bold text-gray-900">Priorização de Propostas</h1>
+          <p className="text-gray-500 mt-1">Decida quais propostas aprovar com impacto orçamentário em tempo real</p>
         </div>
         <div className="flex items-center space-x-4">
           <Select
@@ -247,7 +247,7 @@ export default function OfferGate() {
           />
           <Button onClick={() => setIsCreateModalOpen(true)}>
             <PlusIcon className="w-4 h-4 mr-2" />
-            New Offer
+            Nova Proposta
           </Button>
         </div>
       </div>
@@ -257,12 +257,12 @@ export default function OfferGate() {
         <div className="lg:col-span-2 space-y-4">
           {/* Proposed Offers - Main Action Area */}
           <Card
-            title={`📋 Proposed Offers (${proposedOffers.length})`}
+            title={`📋 Propostas Pendentes (${proposedOffers.length})`}
             action={
               selectedOffers.size > 0 && user?.role === 'ADMIN' && (
                 <Button size="sm" onClick={handleApproveSelected}>
                   <CheckCircleIcon className="w-4 h-4 mr-1" />
-                  Approve Selected ({selectedOffers.size})
+                  Aprovar Selecionadas ({selectedOffers.size})
                 </Button>
               )
             }
@@ -272,7 +272,7 @@ export default function OfferGate() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
               </div>
             ) : proposedOffers.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No proposed offers</p>
+              <p className="text-gray-500 text-center py-8">Nenhuma proposta pendente</p>
             ) : (
               <div className="space-y-3">
                 {proposedOffers.map((offer) => (
@@ -306,7 +306,7 @@ export default function OfferGate() {
                             </span>
                             {offer.start_date && (
                               <span className="text-sm text-gray-500">
-                                Start: {formatDate(offer.start_date)}
+                                Início: {formatDate(offer.start_date)}
                               </span>
                             )}
                           </div>
@@ -343,16 +343,16 @@ export default function OfferGate() {
           </Card>
 
           {/* Other Offers */}
-          <Card title="📁 Other Offers">
+          <Card title="📁 Outras Propostas">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead>
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Candidate</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Requisition</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Candidato</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Requisição</th>
                     <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Cost</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Start</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Custo</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Início</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -379,11 +379,11 @@ export default function OfferGate() {
 
         {/* Right: Impact Preview Panel */}
         <div className="space-y-4">
-          <Card title="📊 Impact Preview">
+          <Card title="📊 Prévia de Impacto">
             {selectedOffers.size === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <ExclamationTriangleIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>Select offers to see budget impact</p>
+                <p>Selecione propostas para ver o impacto no orçamento</p>
               </div>
             ) : previewLoading ? (
               <div className="flex justify-center py-8">
@@ -401,18 +401,18 @@ export default function OfferGate() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">{formatMonth(impact.month)}</span>
                       {impact.is_bottleneck && (
-                        <Badge color="bg-red-100 text-red-800">⚠️ Bottleneck</Badge>
+                        <Badge color="bg-red-100 text-red-800">⚠️ Gargalo</Badge>
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
-                        <span className="text-gray-500">Before:</span>
+                        <span className="text-gray-500">Antes:</span>
                         <span className={`ml-1 ${getStatusColor(impact.status_before)}`}>
                           {getStatusEmoji(impact.status_before)} {formatCurrency(impact.remaining_before)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-gray-500">After:</span>
+                        <span className="text-gray-500">Depois:</span>
                         <span className={`ml-1 font-medium ${getStatusColor(impact.status_after)}`}>
                           {getStatusEmoji(impact.status_after)} {formatCurrency(impact.remaining_after)}
                         </span>
@@ -428,10 +428,10 @@ export default function OfferGate() {
           </Card>
 
           {/* What-If Tab */}
-          <Card title="🔮 What-If Simulation">
+          <Card title="🔮 Simulação What-If">
             <div className="space-y-3">
               <p className="text-sm text-gray-500">
-                Simulate adding hypothetical positions to see budget impact.
+                Simule a adição de cargos hipotéticos para ver o impacto no orçamento.
               </p>
               <Button
                 variant="secondary"
@@ -443,7 +443,7 @@ export default function OfferGate() {
                 }}
               >
                 <PlusIcon className="w-4 h-4 mr-1" />
-                New Simulation
+                Nova Simulação
               </Button>
             </div>
           </Card>
@@ -451,12 +451,12 @@ export default function OfferGate() {
       </div>
 
       {/* Create Offer Modal */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="New Offer" size="lg">
+      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Nova Proposta" size="lg">
         <form onSubmit={handleCreateOffer} className="space-y-4">
           <Select
-            label="Requisition"
+            label="Requisição"
             options={[
-              { value: '', label: 'Select requisition...' },
+              { value: '', label: 'Selecione a requisição...' },
               ...requisitions.map((r) => ({ value: r.id, label: r.title })),
             ]}
             value={createForm.requisition_id}
@@ -464,69 +464,69 @@ export default function OfferGate() {
             required
           />
           <Input
-            label="Candidate Name"
+            label="Nome do Candidato"
             value={createForm.candidate_name}
             onChange={(e) => setCreateForm({ ...createForm, candidate_name: e.target.value })}
             required
           />
           <Input
-            label="Proposed Monthly Cost"
+            label="Custo Mensal Proposto"
             type="number"
             value={createForm.proposed_monthly_cost}
             onChange={(e) => setCreateForm({ ...createForm, proposed_monthly_cost: e.target.value })}
             required
           />
           <Input
-            label="Start Date"
+            label="Data de Início"
             type="date"
             value={createForm.start_date}
             onChange={(e) => setCreateForm({ ...createForm, start_date: e.target.value })}
           />
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" variant="secondary" onClick={() => setIsCreateModalOpen(false)}>
-              Cancel
+              Cancelar
             </Button>
-            <Button type="submit">Create & Propose</Button>
+            <Button type="submit">Criar e Propor</Button>
           </div>
         </form>
       </Modal>
 
       {/* Hold Modal */}
-      <Modal isOpen={isHoldModalOpen} onClose={() => setIsHoldModalOpen(false)} title="Put on Hold">
+      <Modal isOpen={isHoldModalOpen} onClose={() => setIsHoldModalOpen(false)} title="Colocar em Espera">
         <div className="space-y-4">
           <p className="text-sm text-gray-500">
-            Putting <strong>{selectedOffer?.candidate_name}</strong> on hold.
+            Colocando <strong>{selectedOffer?.candidate_name}</strong> em espera.
           </p>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Motivo</label>
             <textarea
               className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 px-3 py-2 text-sm"
               rows={3}
               value={holdReason}
               onChange={(e) => setHoldReason(e.target.value)}
-              placeholder="Budget constraints, timing, etc."
+              placeholder="Restrições orçamentárias, timing, etc."
               required
             />
           </div>
           <div className="flex justify-end space-x-3">
             <Button type="button" variant="secondary" onClick={() => setIsHoldModalOpen(false)}>
-              Cancel
+              Cancelar
             </Button>
             <Button onClick={handleHold} disabled={!holdReason}>
-              Put on Hold
+              Colocar em Espera
             </Button>
           </div>
         </div>
       </Modal>
 
       {/* Change Start Date Modal */}
-      <Modal isOpen={isDateModalOpen} onClose={() => setIsDateModalOpen(false)} title="Change Start Date">
+      <Modal isOpen={isDateModalOpen} onClose={() => setIsDateModalOpen(false)} title="Alterar Data de Início">
         <div className="space-y-4">
           <p className="text-sm text-gray-500">
-            Change start date for <strong>{selectedOffer?.candidate_name}</strong>.
+            Alterar data de início para <strong>{selectedOffer?.candidate_name}</strong>.
           </p>
           <Input
-            label="New Start Date"
+            label="Nova Data de Início"
             type="date"
             value={newStartDate}
             onChange={(e) => setNewStartDate(e.target.value)}
@@ -534,19 +534,19 @@ export default function OfferGate() {
           />
           <div className="flex justify-end space-x-3">
             <Button type="button" variant="secondary" onClick={() => setIsDateModalOpen(false)}>
-              Cancel
+              Cancelar
             </Button>
             <Button onClick={handleChangeStartDate} disabled={!newStartDate}>
-              Update Date
+              Atualizar Data
             </Button>
           </div>
         </div>
       </Modal>
 
       {/* What-If Modal */}
-      <Modal isOpen={isWhatIfModalOpen} onClose={() => setIsWhatIfModalOpen(false)} title="What-If Simulation" size="xl">
+      <Modal isOpen={isWhatIfModalOpen} onClose={() => setIsWhatIfModalOpen(false)} title="Simulação What-If" size="xl">
         <div className="space-y-4">
-          <p className="text-sm text-gray-500">Add hypothetical positions to simulate budget impact.</p>
+          <p className="text-sm text-gray-500">Adicione cargos hipotéticos para simular o impacto no orçamento.</p>
           
           {whatIfPositions.map((pos, idx) => (
             <div key={idx} className="grid grid-cols-3 gap-3">
@@ -572,7 +572,7 @@ export default function OfferGate() {
                   newPositions[idx].monthly_cost = parseFloat(e.target.value) || 0;
                   setWhatIfPositions(newPositions);
                 }}
-                placeholder="Monthly cost"
+                placeholder="Custo mensal"
               />
               <Input
                 type="date"
@@ -588,12 +588,12 @@ export default function OfferGate() {
           
           <Button variant="secondary" size="sm" onClick={addWhatIfPosition}>
             <PlusIcon className="w-4 h-4 mr-1" />
-            Add Position
+            Adicionar Cargo
           </Button>
 
           {whatIfResult && (
             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-medium mb-3">Simulation Results</h4>
+              <h4 className="font-medium mb-3">Resultados da Simulação</h4>
               <div className="space-y-2">
                 {Object.values(whatIfResult.impacts).map((impact: MonthImpact) => (
                   <div key={impact.month} className="flex items-center justify-between text-sm">
@@ -609,10 +609,10 @@ export default function OfferGate() {
 
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" variant="secondary" onClick={() => setIsWhatIfModalOpen(false)}>
-              Close
+              Fechar
             </Button>
             <Button onClick={handleWhatIf} disabled={whatIfPositions.length === 0}>
-              Run Simulation
+              Executar Simulação
             </Button>
           </div>
         </div>

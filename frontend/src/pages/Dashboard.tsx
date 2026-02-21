@@ -281,7 +281,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Painel</h1>
         <Select
           options={orgUnits.map((ou) => ({ value: ou.id, label: ou.name }))}
           value={selectedOrgUnit}
@@ -296,7 +296,7 @@ export default function Dashboard() {
           <div>
             <h3 className="font-medium text-gray-900">Overhead Multiplier</h3>
             <p className="text-2xl font-bold text-green-600">{overheadMultiplier}x</p>
-            <p className="text-sm text-gray-500">Aplicado aos custos do catálogo</p>
+            <p className="text-sm text-gray-500">Aplicado aos custos de cargos</p>
           </div>
         </Card>
         <Card className="border-l-4 border-l-yellow-500">
@@ -476,7 +476,7 @@ export default function Dashboard() {
 
           {simulations.length === 0 && (
             <p className="text-sm text-gray-500 text-center py-4">
-              Adicione simulações para visualizar o impacto no gráfico acima.
+              Adicione simulações para visualizar o impacto no gráfico acima
             </p>
           )}
         </div>

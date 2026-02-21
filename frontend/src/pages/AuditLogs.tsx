@@ -63,15 +63,15 @@ export default function AuditLogs() {
   };
 
   const entityTypes = [
-    { value: '', label: 'All Types' },
-    { value: 'user', label: 'User' },
-    { value: 'org_unit', label: 'Org Unit' },
-    { value: 'budget', label: 'Budget' },
-    { value: 'forecast', label: 'Forecast' },
-    { value: 'actual', label: 'Actual' },
-    { value: 'job_catalog', label: 'Job Catalog' },
-    { value: 'requisition', label: 'Requisition' },
-    { value: 'offer', label: 'Offer' },
+    { value: '', label: 'Todos os Tipos' },
+    { value: 'user', label: 'Usuário' },
+    { value: 'org_unit', label: 'Área' },
+    { value: 'budget', label: 'Orçamento' },
+    { value: 'forecast', label: 'Previsão' },
+    { value: 'actual', label: 'Realizado' },
+    { value: 'job_catalog', label: 'Cargo' },
+    { value: 'requisition', label: 'Requisição' },
+    { value: 'offer', label: 'Proposta' },
   ];
 
   return (
@@ -80,10 +80,10 @@ export default function AuditLogs() {
         <Link to="/admin">
           <Button variant="ghost" size="sm">
             <ArrowLeftIcon className="w-4 h-4 mr-1" />
-            Back to Admin
+            Voltar para Configuração
           </Button>
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Logs de Auditoria</h1>
       </div>
 
       {/* Filters */}
@@ -96,17 +96,17 @@ export default function AuditLogs() {
         />
         <Select
           options={[
-            { value: '50', label: 'Last 50' },
-            { value: '100', label: 'Last 100' },
-            { value: '250', label: 'Last 250' },
-            { value: '500', label: 'Last 500' },
+            { value: '50', label: 'Últimos 50' },
+            { value: '100', label: 'Últimos 100' },
+            { value: '250', label: 'Últimos 250' },
+            { value: '500', label: 'Últimos 500' },
           ]}
           value={limit.toString()}
           onChange={(e) => setLimit(parseInt(e.target.value))}
           className="w-32"
         />
         <Button variant="secondary" onClick={loadLogs}>
-          Refresh
+          Atualizar
         </Button>
       </div>
 
@@ -117,7 +117,7 @@ export default function AuditLogs() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
         ) : logs.length === 0 ? (
-          <p className="text-center text-gray-500 py-8">No audit logs found</p>
+          <p className="text-center text-gray-500 py-8">Nenhum log de auditoria encontrado</p>
         ) : (
           <div className="space-y-2">
             {logs.map((log) => (

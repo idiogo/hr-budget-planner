@@ -98,7 +98,7 @@ export default function Admin() {
   };
 
   const handleDeleteJob = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this job?')) return;
+    if (!confirm('Tem certeza que deseja excluir este cargo?')) return;
     
     try {
       await jobCatalogApi.delete(id);
@@ -166,17 +166,17 @@ export default function Admin() {
 
   const tabs = [
     { id: 'budget' as Tab, label: 'Orçamento' },
-    { id: 'catalog' as Tab, label: 'Job Catalog' },
-    { id: 'users' as Tab, label: 'Users' },
-    { id: 'org-units' as Tab, label: 'Org Units' },
+    { id: 'catalog' as Tab, label: 'Cargos e Salários' },
+    { id: 'users' as Tab, label: 'Usuários' },
+    { id: 'org-units' as Tab, label: 'Áreas' },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Admin</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Configuração</h1>
         <Link to="/admin/audit">
-          <Button variant="secondary">View Audit Logs</Button>
+          <Button variant="secondary">Ver Logs de Auditoria</Button>
         </Link>
       </div>
 
@@ -205,11 +205,11 @@ export default function Admin() {
       {/* Job Catalog Tab */}
       {activeTab === 'catalog' && (
         <Card
-          title="Job Catalog"
+          title="Cargos e Salários"
           action={
             <Button size="sm" onClick={() => { setEditingJob(null); setJobForm({ job_family: '', level: '', title: '', monthly_cost: '' }); setIsJobModalOpen(true); }}>
               <PlusIcon className="w-4 h-4 mr-1" />
-              Add Job
+              Novo Cargo
             </Button>
           }
         >
@@ -222,12 +222,12 @@ export default function Admin() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Family</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Level</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Monthly Cost</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Família</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nível</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Título</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Custo Mensal</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -239,7 +239,7 @@ export default function Admin() {
                       <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(job.monthly_cost)}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge color={job.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>
-                          {job.active ? 'Active' : 'Inactive'}
+                          {job.active ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-right space-x-2">
@@ -262,11 +262,11 @@ export default function Admin() {
       {/* Users Tab */}
       {activeTab === 'users' && (
         <Card
-          title="Users"
+          title="Usuários"
           action={
             <Button size="sm" onClick={() => { setEditingUser(null); setUserForm({ email: '', name: '', password: '', role: 'MANAGER', org_unit_id: '' }); setIsUserModalOpen(true); }}>
               <PlusIcon className="w-4 h-4 mr-1" />
-              Add User
+              Novo Usuário
             </Button>
           }
         >
@@ -279,12 +279,12 @@ export default function Admin() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Role</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Org Unit</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Perfil</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Área</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -300,7 +300,7 @@ export default function Admin() {
                       <td className="px-4 py-3 text-sm text-gray-500">{user.org_unit?.name || '-'}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge color={user.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>
-                          {user.active ? 'Active' : 'Inactive'}
+                          {user.active ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -319,7 +319,7 @@ export default function Admin() {
 
       {/* Org Units Tab */}
       {activeTab === 'org-units' && (
-        <Card title="Organization Units">
+        <Card title="Áreas">
           {loading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -329,11 +329,11 @@ export default function Admin() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Currency</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Overhead Multiplier</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Moeda</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Multiplicador Overhead</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Criado em</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -344,7 +344,7 @@ export default function Admin() {
                       <td className="px-4 py-3 text-sm text-right text-gray-900">{ou.overhead_multiplier}x</td>
                       <td className="px-4 py-3 text-center">
                         <Badge color={ou.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>
-                          {ou.active ? 'Active' : 'Inactive'}
+                          {ou.active ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">{formatDateTime(ou.created_at)}</td>
@@ -358,48 +358,48 @@ export default function Admin() {
       )}
 
       {/* Job Modal */}
-      <Modal isOpen={isJobModalOpen} onClose={() => setIsJobModalOpen(false)} title={editingJob ? 'Edit Job' : 'New Job'}>
+      <Modal isOpen={isJobModalOpen} onClose={() => setIsJobModalOpen(false)} title={editingJob ? 'Editar Cargo' : 'Novo Cargo'}>
         <form onSubmit={handleSaveJob} className="space-y-4">
           <Input
-            label="Job Family"
+            label="Família"
             value={jobForm.job_family}
             onChange={(e) => setJobForm({ ...jobForm, job_family: e.target.value })}
-            placeholder="e.g., Engineering"
+            placeholder="ex: Engenharia"
             required
           />
           <Input
-            label="Level"
+            label="Nível"
             value={jobForm.level}
             onChange={(e) => setJobForm({ ...jobForm, level: e.target.value })}
-            placeholder="e.g., Senior"
+            placeholder="ex: Sênior"
             required
           />
           <Input
-            label="Title"
+            label="Título"
             value={jobForm.title}
             onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })}
-            placeholder="e.g., Senior Software Engineer"
+            placeholder="ex: Engenheiro de Software Sênior"
             required
           />
           <Input
-            label="Monthly Cost"
+            label="Custo Mensal"
             type="number"
             value={jobForm.monthly_cost}
             onChange={(e) => setJobForm({ ...jobForm, monthly_cost: e.target.value })}
             required
           />
           <div className="flex justify-end space-x-3 pt-4">
-            <Button type="button" variant="secondary" onClick={() => setIsJobModalOpen(false)}>Cancel</Button>
-            <Button type="submit">{editingJob ? 'Update' : 'Create'}</Button>
+            <Button type="button" variant="secondary" onClick={() => setIsJobModalOpen(false)}>Cancelar</Button>
+            <Button type="submit">{editingJob ? 'Atualizar' : 'Criar'}</Button>
           </div>
         </form>
       </Modal>
 
       {/* User Modal */}
-      <Modal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} title={editingUser ? 'Edit User' : 'New User'}>
+      <Modal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} title={editingUser ? 'Editar Usuário' : 'Novo Usuário'}>
         <form onSubmit={handleSaveUser} className="space-y-4">
           <Input
-            label="Name"
+            label="Nome"
             value={userForm.name}
             onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
             required
@@ -412,33 +412,33 @@ export default function Admin() {
             required
           />
           <Input
-            label={editingUser ? 'Password (leave blank to keep)' : 'Password'}
+            label={editingUser ? 'Senha (deixe em branco para manter)' : 'Senha'}
             type="password"
             value={userForm.password}
             onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
             required={!editingUser}
           />
           <Select
-            label="Role"
+            label="Perfil"
             options={[
-              { value: 'MANAGER', label: 'Manager' },
-              { value: 'ADMIN', label: 'Admin' },
+              { value: 'MANAGER', label: 'Gestor' },
+              { value: 'ADMIN', label: 'Administrador' },
             ]}
             value={userForm.role}
             onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
           />
           <Select
-            label="Org Unit"
+            label="Área"
             options={[
-              { value: '', label: 'None' },
+              { value: '', label: 'Nenhuma' },
               ...orgUnits.map((ou) => ({ value: ou.id, label: ou.name })),
             ]}
             value={userForm.org_unit_id}
             onChange={(e) => setUserForm({ ...userForm, org_unit_id: e.target.value })}
           />
           <div className="flex justify-end space-x-3 pt-4">
-            <Button type="button" variant="secondary" onClick={() => setIsUserModalOpen(false)}>Cancel</Button>
-            <Button type="submit">{editingUser ? 'Update' : 'Create'}</Button>
+            <Button type="button" variant="secondary" onClick={() => setIsUserModalOpen(false)}>Cancelar</Button>
+            <Button type="submit">{editingUser ? 'Atualizar' : 'Criar'}</Button>
           </div>
         </form>
       </Modal>
