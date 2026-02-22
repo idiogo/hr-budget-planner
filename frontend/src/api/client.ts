@@ -150,7 +150,7 @@ export const actualsApi = {
     return response.data;
   },
   
-  create: async (orgUnitId: string, data: { month: string; amount: number }): Promise<Actual> => {
+  create: async (orgUnitId: string, data: { month: string; amount: number; finalized?: boolean }): Promise<Actual> => {
     const response = await api.post(`/api/org-units/${orgUnitId}/actuals`, data);
     return response.data;
   },

@@ -52,7 +52,6 @@ class WhatIfPosition:
     job_catalog_id: uuid.UUID
     monthly_cost: Decimal
     start_date: date
-    overhead_multiplier: Optional[Decimal] = None
 
 
 def calculate_pro_rata(start_date: date, month: str) -> Decimal:
@@ -82,17 +81,16 @@ def calculate_pro_rata(start_date: date, month: str) -> Decimal:
 
 def calculate_monthly_cost(
     base_cost: Decimal,
-    overhead_multiplier: Decimal,
     start_date: date,
     month: str
 ) -> Decimal:
     """
-    Calculate the final monthly cost with overhead and pro-rata.
+    Calculate the final monthly cost with pro-rata.
     
-    Final = base_cost * overhead_multiplier * pro_rata
+    Final = base_cost * pro_rata
     """
     pro_rata = calculate_pro_rata(start_date, month)
-    cost = base_cost * overhead_multiplier * pro_rata
+    cost = base_cost * pro_rata
     return cost.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
@@ -156,8 +154,7 @@ async def get_baseline(
 async def get_committed_for_month(
     db: AsyncSession,
     org_unit_id: uuid.UUID,
-    month: str,
-    overhead_multiplier: Decimal
+    month: str
 ) -> Decimal:
     """
     Calculate total committed amount for a month.
@@ -193,7 +190,7 @@ async def get_committed_for_month(
         # Calculate cost with pro-rata for first month
         cost = offer.final_monthly_cost or offer.proposed_monthly_cost
         monthly_cost = calculate_monthly_cost(
-            cost, overhead_multiplier, offer.start_date, month
+            cost, offer.start_date, month
         )
         total += monthly_cost
     
@@ -203,8 +200,7 @@ async def get_committed_for_month(
 async def get_pipeline_potential(
     db: AsyncSession,
     org_unit_id: uuid.UUID,
-    month: str,
-    overhead_multiplier: Decimal
+    month: str
 ) -> Decimal:
     """
     Calculate pipeline potential for a month.
@@ -224,7 +220,7 @@ async def get_pipeline_potential(
     total = Decimal("0")
     for req in result.scalars():
         if req.estimated_monthly_cost:
-            total += req.estimated_monthly_cost * overhead_multiplier
+            total += req.estimated_monthly_cost
     
     return total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
@@ -239,13 +235,6 @@ async def calculate_month_health(
     
     Remaining = Approved - Baseline - Committed_Incremental
     """
-    # Get org unit for overhead multiplier
-    result = await db.execute(
-        select(OrgUnit).where(OrgUnit.id == org_unit_id)
-    )
-    org_unit = result.scalar_one_or_none()
-    overhead = org_unit.overhead_multiplier if org_unit else Decimal("1.0")
-    
     # Get approved budget
     result = await db.execute(
         select(Budget).where(
@@ -260,10 +249,10 @@ async def calculate_month_health(
     baseline, baseline_source = await get_baseline(db, org_unit_id, month)
     
     # Get committed
-    committed = await get_committed_for_month(db, org_unit_id, month, overhead)
+    committed = await get_committed_for_month(db, org_unit_id, month)
     
     # Get pipeline potential
-    pipeline = await get_pipeline_potential(db, org_unit_id, month, overhead)
+    pipeline = await get_pipeline_potential(db, org_unit_id, month)
     
     # Calculate remaining
     remaining = approved - baseline - committed
@@ -297,13 +286,6 @@ async def preview_offer_impact(
     """
     from datetime import datetime
     from dateutil.relativedelta import relativedelta
-    
-    # Get org unit overhead
-    result = await db.execute(
-        select(OrgUnit).where(OrgUnit.id == org_unit_id)
-    )
-    org_unit = result.scalar_one_or_none()
-    overhead = org_unit.overhead_multiplier if org_unit else Decimal("1.0")
     
     # Get the offers
     result = await db.execute(
@@ -339,7 +321,7 @@ async def preview_offer_impact(
                 continue
             
             cost = offer.proposed_monthly_cost
-            monthly_cost = calculate_monthly_cost(cost, overhead, offer.start_date, month)
+            monthly_cost = calculate_monthly_cost(cost, offer.start_date, month)
             additional += monthly_cost
         
         # Calculate new remaining
@@ -379,13 +361,6 @@ async def preview_new_positions(
     from datetime import datetime
     from dateutil.relativedelta import relativedelta
     
-    # Get org unit overhead
-    result = await db.execute(
-        select(OrgUnit).where(OrgUnit.id == org_unit_id)
-    )
-    org_unit = result.scalar_one_or_none()
-    default_overhead = org_unit.overhead_multiplier if org_unit else Decimal("1.0")
-    
     # Generate months to analyze
     today = datetime.now()
     months = []
@@ -410,9 +385,8 @@ async def preview_new_positions(
             if pos_year > year or (pos_year == year and pos_month > month_num):
                 continue
             
-            overhead = pos.overhead_multiplier or default_overhead
             monthly_cost = calculate_monthly_cost(
-                pos.monthly_cost, overhead, pos.start_date, month
+                pos.monthly_cost, pos.start_date, month
             )
             additional += monthly_cost
         

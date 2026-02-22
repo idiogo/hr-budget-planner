@@ -35,7 +35,6 @@ export default function Admin() {
   const [orgForm, setOrgForm] = useState({
     name: '',
     currency: 'BRL',
-    overhead_multiplier: '1.00',
   });
   const [jobForm, setJobForm] = useState({
     job_family: '',
@@ -182,7 +181,6 @@ export default function Admin() {
       const data = {
         name: orgForm.name,
         currency: orgForm.currency,
-        overhead_multiplier: parseFloat(orgForm.overhead_multiplier),
       };
       if (editingOrg) {
         await orgUnitsApi.update(editingOrg.id, data);
@@ -191,7 +189,7 @@ export default function Admin() {
       }
       setIsOrgModalOpen(false);
       setEditingOrg(null);
-      setOrgForm({ name: '', currency: 'BRL', overhead_multiplier: '1.00' });
+      setOrgForm({ name: '', currency: 'BRL' });
       loadData();
     } catch (error) {
       console.error('Failed to save org unit:', error);
@@ -239,7 +237,6 @@ export default function Admin() {
     setOrgForm({
       name: org.name,
       currency: org.currency,
-      overhead_multiplier: org.overhead_multiplier?.toString() || '1.00',
     });
     setIsOrgModalOpen(true);
   };
@@ -452,7 +449,7 @@ export default function Admin() {
             <div className="flex space-x-2">
               <Button size="sm" variant="secondary" onClick={() => handleExport('org-units')}>⬇️ Exportar</Button>
               <Button size="sm" variant="secondary" onClick={() => handleImport('org-units')}>⬆️ Importar</Button>
-              <Button size="sm" onClick={() => { setEditingOrg(null); setOrgForm({ name: '', currency: 'BRL', overhead_multiplier: '1.00' }); setIsOrgModalOpen(true); }}>
+              <Button size="sm" onClick={() => { setEditingOrg(null); setOrgForm({ name: '', currency: 'BRL' }); setIsOrgModalOpen(true); }}>
                 <PlusIcon className="w-4 h-4 mr-1" />
                 Nova Área
               </Button>
@@ -470,7 +467,6 @@ export default function Admin() {
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Moeda</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Multiplicador Overhead</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Criado em</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
@@ -481,7 +477,6 @@ export default function Admin() {
                     <tr key={ou.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">{ou.name}</td>
                       <td className="px-4 py-3 text-sm text-center text-gray-500">{ou.currency}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-900">{ou.overhead_multiplier}x</td>
                       <td className="px-4 py-3 text-center">
                         <Badge color={ou.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>
                           {ou.active ? 'Ativo' : 'Inativo'}
@@ -567,13 +562,6 @@ export default function Admin() {
             onChange={(e) => setOrgForm({ ...orgForm, currency: e.target.value })}
             placeholder="BRL"
             maxLength={3}
-          />
-          <Input
-            label="Multiplicador Overhead"
-            type="number"
-            step="0.01"
-            value={orgForm.overhead_multiplier}
-            onChange={(e) => setOrgForm({ ...orgForm, overhead_multiplier: e.target.value })}
           />
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" variant="secondary" onClick={() => setIsOrgModalOpen(false)}>Cancelar</Button>

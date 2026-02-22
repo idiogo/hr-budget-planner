@@ -55,7 +55,7 @@ export default function Requisitions() {
 
   // Selected org unit for budget context
   const [selectedOrgUnit, setSelectedOrgUnit] = useState<string>('');
-  const [selectedOrgUnitData, setSelectedOrgUnitData] = useState<OrgUnit | null>(null);
+  const [, setSelectedOrgUnitData] = useState<OrgUnit | null>(null);
 
   // Selected requisitions for prioritization
   const [selectedReqIds, setSelectedReqIds] = useState<Set<string>>(new Set());
@@ -217,9 +217,6 @@ export default function Requisitions() {
     }
   };
 
-  // Overhead multiplier
-  const overheadMultiplier = selectedOrgUnitData?.overhead_multiplier || 1.8;
-
   // Selected requisitions
   const selectedReqs = useMemo(() => {
     return requisitions.filter((r) => selectedReqIds.has(r.id));
@@ -238,7 +235,7 @@ export default function Requisitions() {
       const selectedAmount = selectedReqs.reduce((sum, req) => {
         if (req.target_start_month && req.target_start_month <= month) {
           const cost = req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0;
-          return sum + cost * overheadMultiplier;
+          return sum + cost;
         }
         return sum;
       }, 0);
@@ -260,20 +257,20 @@ export default function Requisitions() {
         excedente,
       };
     });
-  }, [months, budgets, actuals, selectedReqs, overheadMultiplier]);
+  }, [months, budgets, actuals, selectedReqs]);
 
   // Total selected cost
   const totalSelectedCost = useMemo(() => {
     return selectedReqs.reduce((sum, req) => {
       const cost = req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0;
-      return sum + cost * overheadMultiplier;
+      return sum + cost;
     }, 0);
-  }, [selectedReqs, overheadMultiplier]);
+  }, [selectedReqs]);
 
   // Pipeline potential (all open/interviewing)
   const pipelinePotential = requisitions
     .filter((r) => ['OPEN', 'INTERVIEWING'].includes(r.status))
-    .reduce((sum, r) => sum + (r.estimated_monthly_cost || r.job_catalog?.monthly_cost || 0) * overheadMultiplier, 0);
+    .reduce((sum, r) => sum + (r.estimated_monthly_cost || r.job_catalog?.monthly_cost || 0), 0);
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -444,7 +441,7 @@ export default function Requisitions() {
                     Mês Alvo
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                    Custo c/ Overhead
+                    Custo Mensal
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                     Candidato?
@@ -457,7 +454,6 @@ export default function Requisitions() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {requisitions.map((req) => {
                   const cost = req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0;
-                  const costWithOverhead = cost * overheadMultiplier;
                   const isSelected = selectedReqIds.has(req.id);
 
                   return (
@@ -489,7 +485,7 @@ export default function Requisitions() {
                         {req.target_start_month ? formatMonth(req.target_start_month) : '-'}
                       </td>
                       <td className="px-4 py-3 text-sm text-right text-gray-900">
-                        {formatCurrency(costWithOverhead)}
+                        {formatCurrency(cost)}
                       </td>
                       <td className="px-4 py-3 text-center text-lg">
                         {req.has_candidate_ready ? '✅' : '❌'}

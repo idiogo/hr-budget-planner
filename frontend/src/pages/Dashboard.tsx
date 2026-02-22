@@ -46,7 +46,7 @@ const generateMonths = (year: number) => {
 export default function Dashboard() {
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
   const [selectedOrgUnit, setSelectedOrgUnit] = useState<string>('');
-  const [selectedOrgUnitData, setSelectedOrgUnitData] = useState<OrgUnit | null>(null);
+  const [, setSelectedOrgUnitData] = useState<OrgUnit | null>(null);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [actuals, setActuals] = useState<Actual[]>([]);
   const [jobs, setJobs] = useState<JobCatalog[]>([]);
@@ -106,9 +106,6 @@ export default function Dashboard() {
     }
   };
 
-  // Calculate overhead multiplier
-  const overheadMultiplier = selectedOrgUnitData?.overhead_multiplier || 1.8;
-
   // Find last known actual to project forward
   const lastKnownActual = useMemo(() => {
     if (actuals.length === 0) return 0;
@@ -129,7 +126,7 @@ export default function Dashboard() {
       // Calculate simulation impact for this month
       const simulationAmount = simulations.reduce((sum, sim) => {
         if (sim.startMonth <= month) {
-          return sum + sim.monthlyCost * overheadMultiplier;
+          return sum + Number(sim.monthlyCost);
         }
         return sum;
       }, 0);
@@ -160,7 +157,7 @@ export default function Dashboard() {
         excedente,
       };
     });
-  }, [months, budgets, actuals, simulations, overheadMultiplier, lastKnownActual]);
+  }, [months, budgets, actuals, simulations, lastKnownActual]);
 
   // Get selected job details
   const selectedJobData = jobs.find((j) => j.id === selectedJob);
@@ -174,7 +171,7 @@ export default function Dashboard() {
       jobCatalogId: selectedJob,
       jobTitle: selectedJobData.title,
       startMonth: selectedStartMonth,
-      monthlyCost: selectedJobData.monthly_cost,
+      monthlyCost: Number(selectedJobData.monthly_cost),
     };
 
     setSimulations([...simulations, newSim]);
@@ -235,11 +232,11 @@ export default function Dashboard() {
     }
   };
 
-  // Total simulation cost per month (with overhead)
+  // Total simulation cost per month
   const totalSimulationCost = useMemo(() => {
     if (simulations.length === 0) return 0;
-    return simulations.reduce((sum, sim) => sum + sim.monthlyCost * overheadMultiplier, 0);
-  }, [simulations, overheadMultiplier]);
+    return simulations.reduce((sum, sim) => sum + Number(sim.monthlyCost), 0);
+  }, [simulations]);
 
   // Month options for simulator
   const monthOptions = months.map((m) => ({
@@ -252,7 +249,7 @@ export default function Dashboard() {
     { value: '', label: 'Selecione um cargo...' },
     ...jobs.map((j) => ({
       value: j.id,
-      label: `${j.title} - ${formatCurrency(j.monthly_cost)} (c/ overhead: ${formatCurrency(j.monthly_cost * overheadMultiplier)})`,
+      label: `${j.title} - ${formatCurrency(j.monthly_cost)}/mês`,
     })),
   ];
 
@@ -302,9 +299,14 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-l-4 border-l-green-500">
           <div>
-            <h3 className="font-medium text-gray-900">Overhead Multiplier</h3>
-            <p className="text-2xl font-bold text-green-600">{overheadMultiplier}x</p>
-            <p className="text-sm text-gray-500">Aplicado aos custos de cargos</p>
+            <h3 className="font-medium text-gray-900">Budget Anual</h3>
+            <p className="text-2xl font-bold text-green-600">{formatCurrency(budgets.reduce((sum, b) => sum + Number(b.approved_amount || 0), 0))}</p>
+            <p className="text-sm text-gray-500">Total aprovado ({budgets.length} meses)</p>
+            <div className="mt-2 pt-2 border-t border-gray-100">
+              <p className="text-sm text-gray-600">
+                YTD Realizado: <span className="font-semibold text-gray-900">{formatCurrency(actuals.filter((a) => a.finalized).reduce((sum, a) => sum + Number(a.amount || 0), 0))}</span>
+              </p>
+            </div>
           </div>
         </Card>
         <Card className="border-l-4 border-l-yellow-500">
@@ -415,12 +417,8 @@ export default function Dashboard() {
           {/* Selected job info */}
           {selectedJobData && (
             <div className="p-3 bg-gray-50 rounded-lg text-sm">
-              <span className="text-gray-600">Custo base: </span>
-              <span className="font-medium">{formatCurrency(selectedJobData.monthly_cost)}</span>
-              <span className="text-gray-600"> → Com overhead ({overheadMultiplier}x): </span>
-              <span className="font-medium text-primary-600">
-                {formatCurrency(selectedJobData.monthly_cost * overheadMultiplier)}
-              </span>
+              <span className="text-gray-600">Custo mensal: </span>
+              <span className="font-medium text-primary-600">{formatCurrency(selectedJobData.monthly_cost)}</span>
               <span className="text-gray-500"> /mês</span>
             </div>
           )}
@@ -443,7 +441,7 @@ export default function Dashboard() {
                       </span>
                       <span className="text-gray-500 mx-2">•</span>
                       <span className="text-sm font-medium text-primary-600">
-                        {formatCurrency(sim.monthlyCost * overheadMultiplier)}/mês
+                        {formatCurrency(sim.monthlyCost)}/mês
                       </span>
                     </div>
                     <div className="flex items-center gap-2">

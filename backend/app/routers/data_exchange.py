@@ -79,7 +79,6 @@ async def export_org_units(
         {
             "name": o.name,
             "currency": o.currency,
-            "overhead_multiplier": o.overhead_multiplier,
             "active": o.active,
         }
         for o in orgs
@@ -253,14 +252,12 @@ async def import_org_units(
         
         if existing:
             existing.currency = row.get("currency", "BRL")
-            existing.overhead_multiplier = _parse_decimal(row.get("overhead_multiplier", "1.00"))
             existing.active = _parse_bool(row.get("active", "true"))
             updated += 1
         else:
             org = OrgUnit(
                 name=row["name"],
                 currency=row.get("currency", "BRL"),
-                overhead_multiplier=_parse_decimal(row.get("overhead_multiplier", "1.00")),
                 active=_parse_bool(row.get("active", "true")),
             )
             db.add(org)
@@ -374,6 +371,51 @@ async def import_budgets(
     await db.commit()
     await create_audit_log(
         db, user.id, "IMPORT", "budget", uuid.uuid4(),
+        changes={"created": created, "updated": updated, "file": file.filename},
+        ip_address=get_client_ip(request),
+    )
+    return {"created": created, "updated": updated}
+
+
+@import_router.post("/actuals/{org_unit_id}")
+async def import_actuals(
+    org_unit_id: uuid.UUID,
+    request: Request,
+    file: UploadFile = File(...),
+    user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Import actuals from CSV. Matches by month, creates or updates."""
+    content = await file.read()
+    rows = _parse_csv(content)
+    
+    created, updated = 0, 0
+    for row in rows:
+        result = await db.execute(
+            select(Actual).where(Actual.org_unit_id == org_unit_id, Actual.month == row["month"])
+        )
+        existing = result.scalar_one_or_none()
+        
+        if existing:
+            existing.amount = _parse_decimal(row["amount"])
+            existing.currency = row.get("currency", "BRL")
+            existing.finalized = _parse_bool(row.get("finalized", "false"))
+            updated += 1
+        else:
+            actual = Actual(
+                org_unit_id=org_unit_id,
+                month=row["month"],
+                amount=_parse_decimal(row["amount"]),
+                currency=row.get("currency", "BRL"),
+                finalized=_parse_bool(row.get("finalized", "false")),
+                created_by=user.id,
+            )
+            db.add(actual)
+            created += 1
+    
+    await db.commit()
+    await create_audit_log(
+        db, user.id, "IMPORT", "actual", uuid.uuid4(),
         changes={"created": created, "updated": updated, "file": file.filename},
         ip_address=get_client_ip(request),
     )

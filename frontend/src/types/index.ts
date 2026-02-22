@@ -15,7 +15,6 @@ export interface OrgUnit {
   id: string;
   name: string;
   currency: string;
-  overhead_multiplier: number;
   active: boolean;
   created_at: string;
 }

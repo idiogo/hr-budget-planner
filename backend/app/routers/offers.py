@@ -214,7 +214,6 @@ async def preview_new_positions_endpoint(
             job_catalog_id=p.job_catalog_id,
             monthly_cost=p.monthly_cost,
             start_date=p.start_date,
-            overhead_multiplier=p.overhead_multiplier
         )
         for p in data.positions
     ]

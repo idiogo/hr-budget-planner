@@ -101,7 +101,6 @@ class WhatIfPositionInput(BaseModel):
     job_catalog_id: uuid.UUID
     monthly_cost: Decimal
     start_date: date
-    overhead_multiplier: Optional[Decimal] = None
 
 
 class WhatIfRequest(BaseModel):

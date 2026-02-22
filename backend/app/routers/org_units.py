@@ -147,7 +147,6 @@ async def update_org_unit(
     old_data = {
         "name": org_unit.name,
         "currency": org_unit.currency,
-        "overhead_multiplier": str(org_unit.overhead_multiplier),
         "active": org_unit.active
     }
     

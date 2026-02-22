@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { orgUnitsApi, budgetsApi, actualsApi } from '../api/client';
+import { orgUnitsApi, budgetsApi, actualsApi, dataExchangeApi } from '../api/client';
 import type { OrgUnit, Budget, Actual } from '../types';
 import { formatMonth } from '../utils/format';
 import Card from './ui/Card';
 import Select from './ui/Select';
+import Button from './ui/Button';
 
 const generateMonths = (year: number) =>
   Array.from({ length: 12 }, (_, i) => `${year}-${(i + 1).toString().padStart(2, '0')}`);
@@ -121,8 +122,24 @@ export default function BudgetManager() {
     await loadData();
   };
 
-  const saveActual = async (month: string, val: number) => {
-    await actualsApi.create(selectedOrgUnit, { month, amount: val });
+  const saveActual = async (month: string, val: number, finalized?: boolean) => {
+    const existing = actuals.find((a) => a.month === month);
+    await actualsApi.create(selectedOrgUnit, { 
+      month, 
+      amount: val, 
+      finalized: finalized !== undefined ? finalized : existing?.finalized ?? false 
+    });
+    await loadData();
+  };
+
+  const toggleFinalized = async (month: string) => {
+    const existing = actuals.find((a) => a.month === month);
+    if (!existing) return;
+    await actualsApi.create(selectedOrgUnit, { 
+      month, 
+      amount: Number(existing.amount), 
+      finalized: !existing.finalized 
+    });
     await loadData();
   };
 
@@ -134,6 +151,35 @@ export default function BudgetManager() {
   const getActualValue = (month: string) => {
     const a = actuals.find((x) => x.month === month);
     return a ? Number(a.amount) : 0;
+  };
+
+  const isFinalized = (month: string) => {
+    const a = actuals.find((x) => x.month === month);
+    return a?.finalized ?? false;
+  };
+
+  const handleExport = async (entity: 'budgets' | 'actuals') => {
+    if (!selectedOrgUnit) return;
+    await dataExchangeApi.exportCsv(entity, selectedOrgUnit);
+  };
+
+  const handleImport = async (entity: 'budgets' | 'actuals') => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const result = await dataExchangeApi.importCsv(entity, file, selectedOrgUnit);
+        alert(`Importação concluída: ${result.created} criados, ${result.updated} atualizados`);
+        await loadData();
+      } catch (err) {
+        console.error(err);
+        alert('Erro na importação');
+      }
+    };
+    input.click();
   };
 
   // Totals
@@ -157,7 +203,17 @@ export default function BudgetManager() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
       ) : (
-        <Card title="Orçamento e Realizado — Mês a Mês">
+        <Card 
+          title="Orçamento e Realizado/Projetado — Mês a Mês"
+          action={
+            <div className="flex space-x-2">
+              <Button size="sm" variant="secondary" onClick={() => handleExport('budgets')}>⬇️ Orçamento</Button>
+              <Button size="sm" variant="secondary" onClick={() => handleExport('actuals')}>⬇️ Realizado</Button>
+              <Button size="sm" variant="secondary" onClick={() => handleImport('budgets')}>⬆️ Orçamento</Button>
+              <Button size="sm" variant="secondary" onClick={() => handleImport('actuals')}>⬆️ Realizado</Button>
+            </div>
+          }
+        >
           <p className="text-sm text-gray-500 mb-4">Clique em qualquer valor para editar.</p>
           <div className="overflow-x-auto">
             <table className="min-w-full">
@@ -165,7 +221,8 @@ export default function BudgetManager() {
                 <tr className="border-b border-gray-200">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase w-24">Mês</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Orçamento Aprovado</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Realizado</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Realizado/Projetado</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Status</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Diferença</th>
                 </tr>
               </thead>
@@ -190,8 +247,23 @@ export default function BudgetManager() {
                         <EditableCell
                           value={actualVal}
                           onSave={(val) => saveActual(month, val)}
-                          placeholder="Definir realizado..."
+                          placeholder="Definir valor..."
                         />
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        {actualVal > 0 && (
+                          <button
+                            onClick={() => toggleFinalized(month)}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                              isFinalized(month)
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                            }`}
+                          >
+                            <span className={`w-2 h-2 rounded-full ${isFinalized(month) ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                            {isFinalized(month) ? 'Realizado' : 'Projetado'}
+                          </button>
+                        )}
                       </td>
                       <td className="px-4 py-2 text-right text-sm">
                         {budgetVal > 0 ? (
@@ -211,6 +283,7 @@ export default function BudgetManager() {
                   <td className="px-4 py-3 text-sm font-bold text-gray-900">Total</td>
                   <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">{formatBRL(totalBudget)}</td>
                   <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">{formatBRL(totalActual)}</td>
+                  <td className="px-4 py-3"></td>
                   <td className="px-4 py-3 text-right text-sm font-bold">
                     <span className={totalBudget - totalActual >= 0 ? 'text-green-600' : 'text-red-600'}>
                       {totalBudget - totalActual >= 0 ? '+' : ''}{formatBRL(totalBudget - totalActual)}

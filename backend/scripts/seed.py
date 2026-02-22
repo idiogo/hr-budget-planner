@@ -34,8 +34,7 @@ async def seed_database():
         # 1. Create Org Unit
         org_unit = OrgUnit(
             name="Tech Core",
-            currency="BRL",
-            overhead_multiplier=Decimal("1.80")
+            currency="BRL"
         )
         db.add(org_unit)
         await db.flush()

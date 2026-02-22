@@ -49,7 +49,7 @@ export default function OfferGate() {
   const [actuals, setActuals] = useState<Actual[]>([]);
   const [openReqs, setOpenReqs] = useState<Requisition[]>([]);
   const [selectedReqIds, setSelectedReqIds] = useState<Set<string>>(new Set());
-  const [selectedOrgUnitData, setSelectedOrgUnitData] = useState<OrgUnit | null>(null);
+  const [, setSelectedOrgUnitData] = useState<OrgUnit | null>(null);
   const [loading, setLoading] = useState(true);
   
   
@@ -303,7 +303,6 @@ export default function OfferGate() {
   };
 
   // Chart data
-  const overheadMultiplier = selectedOrgUnitData?.overhead_multiplier || 1.8;
   
   const months = useMemo(() => {
     const year = new Date().getFullYear();
@@ -327,7 +326,7 @@ export default function OfferGate() {
       // Impact of selected offers
       const offerAmount = selectedOffersList.reduce((sum, offer) => {
         if (offer.start_date && offer.start_date.substring(0, 7) <= month) {
-          return sum + Number(offer.proposed_monthly_cost || 0) * overheadMultiplier;
+          return sum + Number(offer.proposed_monthly_cost || 0);
         }
         return sum;
       }, 0);
@@ -338,7 +337,7 @@ export default function OfferGate() {
         const startMonth = req.target_start_month || '2000-01';
         if (startMonth <= month) {
           const baseCost = Number(req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0);
-          return sum + baseCost * overheadMultiplier;
+          return sum + baseCost;
         }
         return sum;
       }, 0);
@@ -362,7 +361,7 @@ export default function OfferGate() {
         excedente,
       };
     });
-  }, [months, budgets, actuals, offers, selectedOffers, selectedReqs, overheadMultiplier]);
+  }, [months, budgets, actuals, offers, selectedOffers, selectedReqs]);
 
   const ChartTooltip = ({ active, payload, label }: any) => {
     if (active && payload?.length) {
@@ -433,7 +432,7 @@ export default function OfferGate() {
           action={
             selectedReqIds.size > 0 && (
               <span className="text-sm font-medium text-purple-600">
-                Custo mensal: {formatCurrency(selectedReqs.reduce((sum, r) => sum + (r.estimated_monthly_cost || r.job_catalog?.monthly_cost || 0) * overheadMultiplier, 0))}
+                Custo mensal: {formatCurrency(selectedReqs.reduce((sum, r) => sum + (r.estimated_monthly_cost || r.job_catalog?.monthly_cost || 0), 0))}
               </span>
             )
           }
@@ -454,14 +453,14 @@ export default function OfferGate() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cargo</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prioridade</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Custo c/ Overhead</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Custo Mensal</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Candidato?</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {openReqs.map((req) => {
-                  const cost = (req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0) * overheadMultiplier;
+                  const cost = req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0;
                   const isSelected = selectedReqIds.has(req.id);
                   return (
                     <tr key={req.id} className={`hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-purple-50' : ''}`} onClick={() => toggleReqSelection(req.id)}>
