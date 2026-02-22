@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi, jobCatalogApi, orgUnitsApi } from '../api/client';
+import { useAuthStore } from '../stores/auth';
 import type { User, JobCatalog, OrgUnit } from '../types';
 import { formatCurrency, formatDateTime } from '../utils/format';
 import Card from '../components/ui/Card';
@@ -15,6 +16,7 @@ import BudgetManager from '../components/BudgetManager';
 type Tab = 'budget' | 'catalog' | 'users' | 'org-units';
 
 export default function Admin() {
+  const currentUser = useAuthStore((s) => s.user);
   const [activeTab, setActiveTab] = useState<Tab>('budget');
   const [jobs, setJobs] = useState<JobCatalog[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -105,6 +107,16 @@ export default function Admin() {
       loadData();
     } catch (error) {
       console.error('Failed to delete job:', error);
+    }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
+    try {
+      await adminApi.deleteUser(id);
+      loadData();
+    } catch (error: any) {
+      alert(error?.response?.data?.detail || 'Erro ao excluir usuário');
     }
   };
 
@@ -303,10 +315,15 @@ export default function Admin() {
                           {user.active ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right space-x-2">
                         <Button size="sm" variant="ghost" onClick={() => openEditUser(user)}>
                           <PencilIcon className="w-4 h-4" />
                         </Button>
+                        {user.id !== currentUser?.id && (
+                          <Button size="sm" variant="ghost" onClick={() => handleDeleteUser(user.id)}>
+                            <TrashIcon className="w-4 h-4 text-red-500" />
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}

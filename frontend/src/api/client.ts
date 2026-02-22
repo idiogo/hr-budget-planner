@@ -314,6 +314,10 @@ export const adminApi = {
     return response.data;
   },
   
+  deleteUser: async (id: string): Promise<void> => {
+    await api.delete(`/api/admin/users/${id}`);
+  },
+  
   listAuditLogs: async (params?: {
     entity_type?: string;
     entity_id?: string;

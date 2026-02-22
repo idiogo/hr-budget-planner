@@ -142,6 +142,33 @@ async def update_user(
     return UserResponse.model_validate(target_user)
 
 
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: uuid.UUID,
+    request: Request,
+    user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete user (admin only). Cannot delete yourself."""
+    if user_id == user.id:
+        raise HTTPException(status_code=400, detail="Não é possível deletar seu próprio usuário")
+    
+    result = await db.execute(select(User).where(User.id == user_id))
+    target_user = result.scalar_one_or_none()
+    
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    await create_audit_log(
+        db, user.id, "DELETE", "user", target_user.id,
+        changes={"email": target_user.email, "name": target_user.name},
+        ip_address=get_client_ip(request)
+    )
+    
+    await db.delete(target_user)
+    await db.commit()
+
+
 # === AUDIT LOGS ===
 
 @router.get("/audit-logs", response_model=list[AuditLogResponse])
