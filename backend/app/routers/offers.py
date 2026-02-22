@@ -447,3 +447,27 @@ async def change_start_date(
     )
     
     return OfferResponse.model_validate(offer)
+
+
+@router.delete("/{offer_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_offer(
+    offer_id: uuid.UUID,
+    request: Request,
+    user: User = Depends(require_manager),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete offer."""
+    result = await db.execute(select(Offer).where(Offer.id == offer_id))
+    offer = result.scalar_one_or_none()
+    
+    if not offer:
+        raise HTTPException(status_code=404, detail="Proposta não encontrada")
+    
+    await create_audit_log(
+        db, user.id, "DELETE", "offer", offer.id,
+        changes={"candidate_name": offer.candidate_name, "status": offer.status},
+        ip_address=get_client_ip(request)
+    )
+    
+    await db.delete(offer)
+    await db.commit()

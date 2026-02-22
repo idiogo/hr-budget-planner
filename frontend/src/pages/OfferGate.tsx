@@ -23,6 +23,7 @@ import {
   ExclamationTriangleIcon,
   PlusIcon,
   CalendarIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 export default function OfferGate() {
@@ -333,6 +334,21 @@ export default function OfferGate() {
                           }}
                         >
                           <ClockIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={async () => {
+                            if (!confirm(`Deletar proposta de ${offer.candidate_name}?`)) return;
+                            try {
+                              await offersApi.delete(offer.id);
+                              loadOffers();
+                            } catch (error: any) {
+                              alert(error?.response?.data?.detail || 'Erro ao deletar proposta');
+                            }
+                          }}
+                        >
+                          <TrashIcon className="w-4 h-4 text-red-500" />
                         </Button>
                       </div>
                     </div>

@@ -298,6 +298,10 @@ export const offersApi = {
     });
     return response.data;
   },
+  
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/api/offers/${id}`);
+  },
 };
 
 // Admin
