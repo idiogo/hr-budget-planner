@@ -369,6 +369,7 @@ export default function OfferGate() {
                     <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Custo</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Início</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -384,6 +385,23 @@ export default function OfferGate() {
                       </td>
                       <td className="px-3 py-2 text-sm text-gray-500">
                         {offer.start_date ? formatDate(offer.start_date) : '-'}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={async () => {
+                            if (!confirm(`Deletar proposta de ${offer.candidate_name}?`)) return;
+                            try {
+                              await offersApi.delete(offer.id);
+                              loadOffers();
+                            } catch (error: any) {
+                              alert(error?.response?.data?.detail || 'Erro ao deletar proposta');
+                            }
+                          }}
+                        >
+                          <TrashIcon className="w-4 h-4 text-red-500" />
+                        </Button>
                       </td>
                     </tr>
                   ))}
