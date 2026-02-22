@@ -1,5 +1,6 @@
 import json
 import uuid
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Optional
 from fastapi import Request
@@ -27,6 +28,8 @@ def _sanitize_changes(data: Any) -> Any:
         return str(data)
     if isinstance(data, uuid.UUID):
         return str(data)
+    if isinstance(data, (date, datetime)):
+        return data.isoformat()
     return data
 
 
