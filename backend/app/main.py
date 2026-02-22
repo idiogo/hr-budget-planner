@@ -50,6 +50,10 @@ app.include_router(requisitions_router)
 app.include_router(offers_router)
 app.include_router(admin_router)
 
+from app.routers.data_exchange import router as export_router, import_router
+app.include_router(export_router)
+app.include_router(import_router)
+
 
 @app.get("/health")
 async def health():

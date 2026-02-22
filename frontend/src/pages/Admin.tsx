@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { adminApi, jobCatalogApi, orgUnitsApi, default as api } from '../api/client';
+import { adminApi, jobCatalogApi, orgUnitsApi, dataExchangeApi, default as api } from '../api/client';
 import { useAuthStore } from '../stores/auth';
 import type { User, JobCatalog, OrgUnit } from '../types';
 import { formatCurrency, formatDateTime } from '../utils/format';
@@ -208,6 +208,32 @@ export default function Admin() {
     }
   };
 
+  const handleExport = async (entity: string) => {
+    try {
+      await dataExchangeApi.exportCsv(entity);
+    } catch (error) {
+      alert('Erro ao exportar');
+    }
+  };
+
+  const handleImport = async (entity: string) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const result = await dataExchangeApi.importCsv(entity, file);
+        alert(`Importação concluída: ${result.created} criados, ${result.updated} atualizados${result.note ? `. ${result.note}` : ''}`);
+        loadData();
+      } catch (error: any) {
+        alert(error?.response?.data?.detail || 'Erro ao importar');
+      }
+    };
+    input.click();
+  };
+
   const openEditOrg = (org: OrgUnit) => {
     setEditingOrg(org);
     setOrgForm({
@@ -286,10 +312,14 @@ export default function Admin() {
         <Card
           title="Cargos e Salários"
           action={
-            <Button size="sm" onClick={() => { setEditingJob(null); setJobForm({ job_family: '', level: '', title: '', monthly_cost: '', hierarchy_level: '100' }); setIsJobModalOpen(true); }}>
-              <PlusIcon className="w-4 h-4 mr-1" />
-              Novo Cargo
-            </Button>
+            <div className="flex space-x-2">
+              <Button size="sm" variant="secondary" onClick={() => handleExport('job-catalog')}>⬇️ Exportar</Button>
+              <Button size="sm" variant="secondary" onClick={() => handleImport('job-catalog')}>⬆️ Importar</Button>
+              <Button size="sm" onClick={() => { setEditingJob(null); setJobForm({ job_family: '', level: '', title: '', monthly_cost: '', hierarchy_level: '100' }); setIsJobModalOpen(true); }}>
+                <PlusIcon className="w-4 h-4 mr-1" />
+                Novo Cargo
+              </Button>
+            </div>
           }
         >
           {loading ? (
@@ -350,10 +380,14 @@ export default function Admin() {
         <Card
           title="Usuários"
           action={
-            <Button size="sm" onClick={() => { setEditingUser(null); setUserForm({ email: '', name: '', password: '', role: 'MANAGER', org_unit_id: '', job_catalog_id: '' }); setIsUserModalOpen(true); }}>
-              <PlusIcon className="w-4 h-4 mr-1" />
-              Novo Usuário
-            </Button>
+            <div className="flex space-x-2">
+              <Button size="sm" variant="secondary" onClick={() => handleExport('users')}>⬇️ Exportar</Button>
+              <Button size="sm" variant="secondary" onClick={() => handleImport('users')}>⬆️ Importar</Button>
+              <Button size="sm" onClick={() => { setEditingUser(null); setUserForm({ email: '', name: '', password: '', role: 'MANAGER', org_unit_id: '', job_catalog_id: '' }); setIsUserModalOpen(true); }}>
+                <PlusIcon className="w-4 h-4 mr-1" />
+                Novo Usuário
+              </Button>
+            </div>
           }
         >
           {loading ? (
@@ -415,10 +449,14 @@ export default function Admin() {
         <Card
           title="Áreas"
           action={
-            <Button size="sm" onClick={() => { setEditingOrg(null); setOrgForm({ name: '', currency: 'BRL', overhead_multiplier: '1.00' }); setIsOrgModalOpen(true); }}>
-              <PlusIcon className="w-4 h-4 mr-1" />
-              Nova Área
-            </Button>
+            <div className="flex space-x-2">
+              <Button size="sm" variant="secondary" onClick={() => handleExport('org-units')}>⬇️ Exportar</Button>
+              <Button size="sm" variant="secondary" onClick={() => handleImport('org-units')}>⬆️ Importar</Button>
+              <Button size="sm" onClick={() => { setEditingOrg(null); setOrgForm({ name: '', currency: 'BRL', overhead_multiplier: '1.00' }); setIsOrgModalOpen(true); }}>
+                <PlusIcon className="w-4 h-4 mr-1" />
+                Nova Área
+              </Button>
+            </div>
           }
         >
           {loading ? (

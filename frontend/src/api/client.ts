@@ -304,6 +304,34 @@ export const offersApi = {
   },
 };
 
+// Data Exchange
+export const dataExchangeApi = {
+  exportCsv: async (entity: string, orgUnitId?: string) => {
+    const path = orgUnitId ? `/api/export/${entity}/${orgUnitId}` : `/api/export/${entity}`;
+    const response = await api.get(path, { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    const disposition = response.headers['content-disposition'];
+    const filename = disposition?.match(/filename="(.+)"/)?.[1] || `${entity}.csv`;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+  
+  importCsv: async (entity: string, file: File, orgUnitId?: string): Promise<{ created: number; updated: number; note?: string }> => {
+    const path = orgUnitId ? `/api/import/${entity}/${orgUnitId}` : `/api/import/${entity}`;
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(path, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+};
+
 // Admin
 export const adminApi = {
   listUsers: async (): Promise<User[]> => {
