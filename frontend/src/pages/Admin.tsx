@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { adminApi, jobCatalogApi, orgUnitsApi } from '../api/client';
+import { adminApi, jobCatalogApi, orgUnitsApi, default as api } from '../api/client';
 import { useAuthStore } from '../stores/auth';
 import type { User, JobCatalog, OrgUnit } from '../types';
 import { formatCurrency, formatDateTime } from '../utils/format';
@@ -111,14 +111,23 @@ export default function Admin() {
     }
   };
 
-  const handleDeleteJob = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este cargo?')) return;
-    
+  const handleDeactivateJob = async (id: string) => {
+    if (!confirm('Desativar este cargo? Ele não aparecerá mais para simulações.')) return;
     try {
       await jobCatalogApi.delete(id);
       loadData();
     } catch (error) {
-      console.error('Failed to delete job:', error);
+      console.error('Failed to deactivate job:', error);
+    }
+  };
+
+  const handleDeleteJob = async (id: string) => {
+    if (!confirm('DELETAR PERMANENTEMENTE este cargo? Esta ação não pode ser desfeita.')) return;
+    try {
+      await api.delete(`/api/job-catalog/${id}?hard=true`);
+      loadData();
+    } catch (error: any) {
+      alert(error?.response?.data?.detail || 'Erro ao excluir cargo');
     }
   };
 
@@ -314,11 +323,16 @@ export default function Admin() {
                           {job.active ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-right space-x-2">
+                      <td className="px-4 py-3 text-right space-x-1">
                         <Button size="sm" variant="ghost" onClick={() => openEditJob(job)}>
                           <PencilIcon className="w-4 h-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDeleteJob(job.id)}>
+                        {job.active && (
+                          <Button size="sm" variant="ghost" onClick={() => handleDeactivateJob(job.id)} title="Desativar">
+                            <svg className="w-4 h-4 text-yellow-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                          </Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => handleDeleteJob(job.id)} title="Deletar permanentemente">
                           <TrashIcon className="w-4 h-4 text-red-500" />
                         </Button>
                       </td>

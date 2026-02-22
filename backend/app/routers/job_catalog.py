@@ -134,10 +134,13 @@ async def update_job_catalog(
 async def delete_job_catalog(
     job_id: uuid.UUID,
     request: Request,
+    hard: bool = Query(False),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    """Soft delete job catalog entry (admin only)."""
+    """Delete or deactivate job catalog entry (admin only).
+    Use ?hard=true to permanently delete, otherwise soft-deletes (deactivate).
+    """
     result = await db.execute(
         select(JobCatalog).where(JobCatalog.id == job_id)
     )
@@ -146,12 +149,20 @@ async def delete_job_catalog(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
-    job.active = False
-    await db.commit()
-    
-    await create_audit_log(
-        db, user.id, "DELETE", "job_catalog", job.id,
-        ip_address=get_client_ip(request)
-    )
-    
-    return {"message": "Job catalog entry deleted"}
+    if hard:
+        await create_audit_log(
+            db, user.id, "HARD_DELETE", "job_catalog", job.id,
+            changes={"title": job.title, "level": job.level},
+            ip_address=get_client_ip(request)
+        )
+        await db.delete(job)
+        await db.commit()
+        return {"message": "Job catalog entry permanently deleted"}
+    else:
+        job.active = False
+        await db.commit()
+        await create_audit_log(
+            db, user.id, "DEACTIVATE", "job_catalog", job.id,
+            ip_address=get_client_ip(request)
+        )
+        return {"message": "Job catalog entry deactivated"}
