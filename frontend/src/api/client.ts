@@ -215,6 +215,10 @@ export const requisitionsApi = {
     const response = await api.post(`/api/requisitions/${id}/transition`, { status });
     return response.data;
   },
+  
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/api/requisitions/${id}`);
+  },
 };
 
 // Offers

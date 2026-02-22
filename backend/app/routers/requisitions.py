@@ -233,3 +233,39 @@ async def transition_requisition(
     )
     
     return RequisitionResponse.model_validate(req)
+
+
+@router.delete("/{req_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_requisition(
+    req_id: uuid.UUID,
+    request: Request,
+    user: User = Depends(require_manager),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete requisition. Checks for linked offers first."""
+    from app.models import Offer
+    
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    
+    if not req:
+        raise HTTPException(status_code=404, detail="Requisição não encontrada")
+    
+    offers = (await db.execute(
+        select(Offer).where(Offer.requisition_id == req_id)
+    )).scalars().all()
+    
+    if offers:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Não é possível deletar: requisição possui {len(offers)} oferta(s) vinculada(s). Remova as ofertas primeiro."
+        )
+    
+    await create_audit_log(
+        db, user.id, "DELETE", "requisition", req.id,
+        changes={"title": req.title, "status": req.status},
+        ip_address=get_client_ip(request)
+    )
+    
+    await db.delete(req)
+    await db.commit()

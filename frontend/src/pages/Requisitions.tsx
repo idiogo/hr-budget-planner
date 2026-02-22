@@ -503,6 +503,22 @@ export default function Requisitions() {
                             Entrevistas
                           </Button>
                         )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={async () => {
+                            if (!confirm('Tem certeza que deseja deletar esta requisição?')) return;
+                            try {
+                              await requisitionsApi.delete(req.id);
+                              loadData();
+                            } catch (error: any) {
+                              alert(error?.response?.data?.detail || 'Erro ao deletar requisição');
+                            }
+                          }}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          Deletar
+                        </Button>
                       </td>
                     </tr>
                   );
