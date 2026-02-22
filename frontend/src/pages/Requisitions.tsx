@@ -510,7 +510,7 @@ export default function Requisitions() {
                             if (!confirm('Tem certeza que deseja deletar esta requisição?')) return;
                             try {
                               await requisitionsApi.delete(req.id);
-                              loadData();
+                              loadRequisitions();
                             } catch (error: any) {
                               alert(error?.response?.data?.detail || 'Erro ao deletar requisição');
                             }
