@@ -32,6 +32,7 @@ interface ChartData {
   alocado: number;
   naoAlocado: number;
   selecionadas: number;
+  excedente: number;
 }
 
 // Generate all months for a year
@@ -242,15 +243,22 @@ export default function Requisitions() {
         return sum;
       }, 0);
 
-      const naoAlocado = Math.max(0, budgetAmount - alocadoAmount - selectedAmount);
+      const total = alocadoAmount + selectedAmount;
+      const alocadoDisplay = Math.min(alocadoAmount, budgetAmount);
+      const alocadoExcess = Math.max(0, alocadoAmount - budgetAmount);
+      const remainingAfterAlocado = Math.max(0, budgetAmount - alocadoAmount);
+      const selecionadasWithinBudget = Math.min(selectedAmount, remainingAfterAlocado);
+      const naoAlocado = Math.max(0, budgetAmount - alocadoAmount - selecionadasWithinBudget);
+      const excedente = alocadoExcess + Math.max(0, selectedAmount - selecionadasWithinBudget);
 
       return {
         month,
         monthLabel: formatMonth(month),
         budget: budgetAmount,
-        alocado: alocadoAmount,
+        alocado: alocadoDisplay,
         naoAlocado,
-        selecionadas: selectedAmount,
+        selecionadas: selecionadasWithinBudget,
+        excedente,
       };
     });
   }, [months, budgets, actuals, selectedReqs, overheadMultiplier]);
@@ -287,6 +295,11 @@ export default function Requisitions() {
           <p className="text-sm text-purple-600">
             Vagas Selecionadas: <span className="font-medium">{formatCurrency(data.selecionadas)}</span>
           </p>
+          {data.excedente > 0 && (
+            <p className="text-sm text-red-600 font-bold">
+              ⚠️ Excedente: <span>{formatCurrency(data.excedente)}</span>
+            </p>
+          )}
         </div>
       );
     }
@@ -348,6 +361,7 @@ export default function Requisitions() {
                 <Bar dataKey="alocado" name="Alocado" stackId="a" fill="#22c55e" />
                 <Bar dataKey="selecionadas" name="Vagas Selecionadas" stackId="a" fill="#a855f7" />
                 <Bar dataKey="naoAlocado" name="Não Alocado" stackId="a" fill="#3b82f6" />
+                <Bar dataKey="excedente" name="Excedente (acima do orçamento)" stackId="a" fill="#ef4444" />
               </BarChart>
             </ResponsiveContainer>
           </div>
