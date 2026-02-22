@@ -342,17 +342,18 @@ export default function OfferGate() {
       // Impact of selected offers
       const offerAmount = selectedOffersList.reduce((sum, offer) => {
         if (offer.start_date && offer.start_date.substring(0, 7) <= month) {
-          return sum + (offer.proposed_monthly_cost || 0) * overheadMultiplier;
+          return sum + Number(offer.proposed_monthly_cost || 0) * overheadMultiplier;
         }
         return sum;
       }, 0);
 
       // Impact of selected requisitions (vagas sendo trabalhadas)
       const reqAmount = selectedReqs.reduce((sum, req) => {
-        const startMonth = req.target_start_month || month; // if no target, assume current
+        // If no target_start_month, assume it impacts all months
+        const startMonth = req.target_start_month || '2000-01';
         if (startMonth <= month) {
-          const cost = req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0;
-          return sum + cost * overheadMultiplier;
+          const baseCost = Number(req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0);
+          return sum + baseCost * overheadMultiplier;
         }
         return sum;
       }, 0);
