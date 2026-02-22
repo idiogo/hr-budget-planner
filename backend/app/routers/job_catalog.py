@@ -150,6 +150,27 @@ async def delete_job_catalog(
         raise HTTPException(status_code=404, detail="Job not found")
     
     if hard:
+        # Check for references
+        from app.models import Requisition, Offer, User as UserModel
+        refs = []
+        req_count = (await db.execute(
+            select(Requisition).where(Requisition.job_catalog_id == job_id)
+        )).scalars().all()
+        if req_count:
+            refs.append(f"{len(req_count)} requisição(ões)")
+        
+        user_count = (await db.execute(
+            select(UserModel).where(UserModel.job_catalog_id == job_id)
+        )).scalars().all()
+        if user_count:
+            refs.append(f"{len(user_count)} usuário(s)")
+        
+        if refs:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Não é possível deletar: cargo vinculado a {', '.join(refs)}. Desative-o ou remova os vínculos primeiro."
+            )
+        
         await create_audit_log(
             db, user.id, "HARD_DELETE", "job_catalog", job.id,
             changes={"title": job.title, "level": job.level},
