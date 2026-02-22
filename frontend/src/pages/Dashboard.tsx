@@ -137,19 +137,29 @@ export default function Dashboard() {
       // Check if over budget
       const total = alocadoAmount + simulationAmount;
       const overBudget = Math.max(0, total - budgetAmount);
-      const simulacaoWithinBudget = Math.max(0, simulationAmount - overBudget);
-
-      // naoAlocado = budget - alocado - simulacaoWithinBudget (but not negative)
+      
+      // Cap alocado at budget for chart display
+      const alocadoDisplay = Math.min(alocadoAmount, budgetAmount);
+      const alocadoExcess = Math.max(0, alocadoAmount - budgetAmount);
+      
+      // Simulation within budget = simulation that fits in remaining budget after alocado
+      const remainingAfterAlocado = Math.max(0, budgetAmount - alocadoAmount);
+      const simulacaoWithinBudget = Math.min(simulationAmount, remainingAfterAlocado);
+      
+      // naoAlocado = remaining budget after alocado and simulation
       const naoAlocado = Math.max(0, budgetAmount - alocadoAmount - simulacaoWithinBudget);
+      
+      // Excedente = everything above budget (excess alocado + excess simulation)
+      const excedente = alocadoExcess + Math.max(0, simulationAmount - simulacaoWithinBudget);
 
       return {
         month,
         monthLabel: formatMonth(month),
         budget: budgetAmount,
-        alocado: alocadoAmount,
+        alocado: alocadoDisplay,
         naoAlocado,
         simulacao: simulacaoWithinBudget,
-        excedente: overBudget,
+        excedente,
       };
     });
   }, [months, budgets, actuals, simulations, overheadMultiplier, lastKnownActual]);
