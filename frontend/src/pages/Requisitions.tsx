@@ -228,13 +228,13 @@ export default function Requisitions() {
       const budget = budgets.find((b) => b.month === month);
       const actual = actuals.find((a) => a.month === month);
 
-      const budgetAmount = budget?.approved_amount || 0;
-      const alocadoAmount = actual?.amount || 0;
+      const budgetAmount = Number(budget?.approved_amount || 0);
+      const alocadoAmount = Number(actual?.amount || 0);
 
       // Calculate selected requisitions impact for this month
       const selectedAmount = selectedReqs.reduce((sum, req) => {
         if (req.target_start_month && req.target_start_month <= month) {
-          const cost = req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0;
+          const cost = Number(req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0);
           return sum + cost;
         }
         return sum;
@@ -262,7 +262,7 @@ export default function Requisitions() {
   // Total selected cost
   const totalSelectedCost = useMemo(() => {
     return selectedReqs.reduce((sum, req) => {
-      const cost = req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0;
+      const cost = Number(req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0);
       return sum + cost;
     }, 0);
   }, [selectedReqs]);
@@ -270,7 +270,7 @@ export default function Requisitions() {
   // Pipeline potential (all open/interviewing)
   const pipelinePotential = requisitions
     .filter((r) => ['OPEN', 'INTERVIEWING'].includes(r.status))
-    .reduce((sum, r) => sum + (r.estimated_monthly_cost || r.job_catalog?.monthly_cost || 0), 0);
+    .reduce((sum, r) => sum + Number(r.estimated_monthly_cost || r.job_catalog?.monthly_cost || 0), 0);
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {

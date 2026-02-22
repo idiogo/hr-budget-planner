@@ -320,8 +320,8 @@ export default function OfferGate() {
     return months.map((month) => {
       const budget = budgets.find((b) => b.month === month);
       const actual = actuals.find((a) => a.month === month);
-      const budgetAmount = budget?.approved_amount || 0;
-      const alocadoAmount = actual?.amount || 0;
+      const budgetAmount = Number(budget?.approved_amount || 0);
+      const alocadoAmount = Number(actual?.amount || 0);
 
       // Impact of selected offers
       const offerAmount = selectedOffersList.reduce((sum, offer) => {
@@ -432,7 +432,7 @@ export default function OfferGate() {
           action={
             selectedReqIds.size > 0 && (
               <span className="text-sm font-medium text-purple-600">
-                Custo mensal: {formatCurrency(selectedReqs.reduce((sum, r) => sum + (r.estimated_monthly_cost || r.job_catalog?.monthly_cost || 0), 0))}
+                Custo mensal: {formatCurrency(selectedReqs.reduce((sum, r) => sum + Number(r.estimated_monthly_cost || r.job_catalog?.monthly_cost || 0), 0))}
               </span>
             )
           }
@@ -460,7 +460,7 @@ export default function OfferGate() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {openReqs.map((req) => {
-                  const cost = req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0;
+                  const cost = Number(req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0);
                   const isSelected = selectedReqIds.has(req.id);
                   return (
                     <tr key={req.id} className={`hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-purple-50' : ''}`} onClick={() => toggleReqSelection(req.id)}>
