@@ -308,7 +308,7 @@ export const adminApi = {
     return response.data;
   },
   
-  createUser: async (data: { email: string; name: string; password: string; role: string; org_unit_id?: string }): Promise<User> => {
+  createUser: async (data: { email: string; name: string; password: string; role: string; org_unit_id?: string; job_catalog_id?: string }): Promise<User> => {
     const response = await api.post('/api/admin/users', data);
     return response.data;
   },

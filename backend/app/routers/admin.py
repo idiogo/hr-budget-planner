@@ -26,7 +26,7 @@ async def list_users(
     """List all users (admin only)."""
     result = await db.execute(
         select(User)
-        .options(selectinload(User.org_unit))
+        .options(selectinload(User.org_unit), selectinload(User.job_catalog))
         .order_by(User.name)
     )
     return [UserResponse.model_validate(u) for u in result.scalars()]
@@ -41,7 +41,7 @@ async def get_user(
     """Get user by ID (admin only)."""
     result = await db.execute(
         select(User)
-        .options(selectinload(User.org_unit))
+        .options(selectinload(User.org_unit), selectinload(User.job_catalog))
         .where(User.id == user_id)
     )
     target_user = result.scalar_one_or_none()
@@ -72,7 +72,8 @@ async def create_user(
         name=data.name,
         password_hash=get_password_hash(data.password),
         role=data.role,
-        org_unit_id=data.org_unit_id
+        org_unit_id=data.org_unit_id,
+        job_catalog_id=data.job_catalog_id,
     )
     db.add(new_user)
     await db.commit()
@@ -81,7 +82,7 @@ async def create_user(
     # Reload with relations
     result = await db.execute(
         select(User)
-        .options(selectinload(User.org_unit))
+        .options(selectinload(User.org_unit), selectinload(User.job_catalog))
         .where(User.id == new_user.id)
     )
     new_user = result.scalar_one()
@@ -106,7 +107,7 @@ async def update_user(
     """Update user (admin only)."""
     result = await db.execute(
         select(User)
-        .options(selectinload(User.org_unit))
+        .options(selectinload(User.org_unit), selectinload(User.job_catalog))
         .where(User.id == user_id)
     )
     target_user = result.scalar_one_or_none()

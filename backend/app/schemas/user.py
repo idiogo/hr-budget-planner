@@ -9,6 +9,7 @@ class UserBase(BaseModel):
     name: str
     role: str
     org_unit_id: Optional[uuid.UUID] = None
+    job_catalog_id: Optional[uuid.UUID] = None
 
 
 class UserCreate(UserBase):
@@ -20,6 +21,7 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     role: Optional[str] = None
     org_unit_id: Optional[uuid.UUID] = None
+    job_catalog_id: Optional[uuid.UUID] = None
     active: Optional[bool] = None
     password: Optional[str] = None
 
@@ -32,6 +34,16 @@ class OrgUnitMinimal(BaseModel):
         from_attributes = True
 
 
+class JobCatalogMinimal(BaseModel):
+    id: uuid.UUID
+    title: str
+    level: str
+    hierarchy_level: int
+
+    class Config:
+        from_attributes = True
+
+
 class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
@@ -39,6 +51,8 @@ class UserResponse(BaseModel):
     role: str
     org_unit_id: Optional[uuid.UUID] = None
     org_unit: Optional[OrgUnitMinimal] = None
+    job_catalog_id: Optional[uuid.UUID] = None
+    job_catalog: Optional[JobCatalogMinimal] = None
     active: bool
     created_at: datetime
 

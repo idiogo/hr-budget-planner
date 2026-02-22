@@ -42,6 +42,7 @@ export default function Admin() {
     level: '',
     title: '',
     monthly_cost: '',
+    hierarchy_level: '100',
   });
   const [userForm, setUserForm] = useState({
     email: '',
@@ -49,6 +50,7 @@ export default function Admin() {
     password: '',
     role: 'MANAGER',
     org_unit_id: '',
+    job_catalog_id: '',
   });
 
   useEffect(() => {
@@ -68,6 +70,8 @@ export default function Admin() {
           setUsers(userData);
           const orgs = await orgUnitsApi.list();
           setOrgUnits(orgs);
+          const jobsForUsers = await jobCatalogApi.list();
+          setJobs(jobsForUsers);
           break;
         case 'org-units':
           const orgData = await orgUnitsApi.list();
@@ -89,6 +93,7 @@ export default function Admin() {
         level: jobForm.level,
         title: jobForm.title,
         monthly_cost: parseFloat(jobForm.monthly_cost),
+        hierarchy_level: parseInt(jobForm.hierarchy_level) || 100,
       };
       
       if (editingJob) {
@@ -99,7 +104,7 @@ export default function Admin() {
       
       setIsJobModalOpen(false);
       setEditingJob(null);
-      setJobForm({ job_family: '', level: '', title: '', monthly_cost: '' });
+      setJobForm({ job_family: '', level: '', title: '', monthly_cost: '', hierarchy_level: '100' });
       loadData();
     } catch (error) {
       console.error('Failed to save job:', error);
@@ -136,6 +141,7 @@ export default function Admin() {
           name: userForm.name,
           role: userForm.role as 'ADMIN' | 'MANAGER',
           org_unit_id: userForm.org_unit_id || null,
+          job_catalog_id: userForm.job_catalog_id || null,
         };
         if (userForm.password) {
           updateData.password = userForm.password;
@@ -148,12 +154,13 @@ export default function Admin() {
           password: userForm.password,
           role: userForm.role,
           org_unit_id: userForm.org_unit_id || undefined,
+          job_catalog_id: userForm.job_catalog_id || undefined,
         });
       }
       
       setIsUserModalOpen(false);
       setEditingUser(null);
-      setUserForm({ email: '', name: '', password: '', role: 'MANAGER', org_unit_id: '' });
+      setUserForm({ email: '', name: '', password: '', role: 'MANAGER', org_unit_id: '', job_catalog_id: '' });
       loadData();
     } catch (error) {
       console.error('Failed to save user:', error);
@@ -209,6 +216,7 @@ export default function Admin() {
       level: job.level,
       title: job.title,
       monthly_cost: job.monthly_cost.toString(),
+      hierarchy_level: job.hierarchy_level?.toString() || '100',
     });
     setIsJobModalOpen(true);
   };
@@ -221,6 +229,7 @@ export default function Admin() {
       password: '',
       role: user.role,
       org_unit_id: user.org_unit_id || '',
+      job_catalog_id: user.job_catalog_id || '',
     });
     setIsUserModalOpen(true);
   };
@@ -287,6 +296,7 @@ export default function Admin() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nível</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Título</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Custo Mensal</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Nível Hierárquico</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                   </tr>
@@ -298,6 +308,7 @@ export default function Admin() {
                       <td className="px-4 py-3 text-sm text-gray-500">{job.level}</td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">{job.title}</td>
                       <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(job.monthly_cost)}</td>
+                      <td className="px-4 py-3 text-sm text-center text-gray-500">{job.hierarchy_level}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge color={job.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>
                           {job.active ? 'Ativo' : 'Inativo'}
@@ -344,6 +355,7 @@ export default function Admin() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Perfil</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Área</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cargo</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                   </tr>
@@ -359,6 +371,7 @@ export default function Admin() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">{user.org_unit?.name || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{user.job_catalog ? `${user.job_catalog.title} (${user.job_catalog.level})` : '-'}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge color={user.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>
                           {user.active ? 'Ativo' : 'Inativo'}
@@ -471,6 +484,14 @@ export default function Admin() {
             onChange={(e) => setJobForm({ ...jobForm, monthly_cost: e.target.value })}
             required
           />
+          <Input
+            label="Nível Hierárquico"
+            type="number"
+            value={jobForm.hierarchy_level}
+            onChange={(e) => setJobForm({ ...jobForm, hierarchy_level: e.target.value })}
+            placeholder="100 = mais alto, 10 = mais baixo"
+            required
+          />
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" variant="secondary" onClick={() => setIsJobModalOpen(false)}>Cancelar</Button>
             <Button type="submit">{editingJob ? 'Atualizar' : 'Criar'}</Button>
@@ -549,6 +570,15 @@ export default function Admin() {
             ]}
             value={userForm.org_unit_id}
             onChange={(e) => setUserForm({ ...userForm, org_unit_id: e.target.value })}
+          />
+          <Select
+            label="Cargo"
+            options={[
+              { value: '', label: 'Nenhum' },
+              ...jobs.map((j) => ({ value: j.id, label: `${j.title} (${j.level}) — Nível ${j.hierarchy_level}` })),
+            ]}
+            value={userForm.job_catalog_id}
+            onChange={(e) => setUserForm({ ...userForm, job_catalog_id: e.target.value })}
           />
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" variant="secondary" onClick={() => setIsUserModalOpen(false)}>Cancelar</Button>

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import String, Boolean, DateTime, Numeric
+from sqlalchemy import String, Boolean, DateTime, Numeric, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
@@ -17,6 +17,7 @@ class JobCatalog(Base):
     level: Mapped[str] = mapped_column(String(20), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     monthly_cost: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    hierarchy_level: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="BRL")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

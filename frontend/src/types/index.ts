@@ -5,6 +5,8 @@ export interface User {
   role: 'ADMIN' | 'MANAGER';
   org_unit_id: string | null;
   org_unit: OrgUnit | null;
+  job_catalog_id: string | null;
+  job_catalog: { id: string; title: string; level: string; hierarchy_level: number } | null;
   active: boolean;
   created_at: string;
 }
@@ -75,6 +77,7 @@ export interface JobCatalog {
   level: string;
   title: string;
   monthly_cost: number;
+  hierarchy_level: number;
   currency: string;
   active: boolean;
   created_at: string;

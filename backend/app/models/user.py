@@ -25,6 +25,9 @@ class User(Base):
     org_unit_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("org_units.id"), nullable=True
     )
+    job_catalog_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("job_catalog.id"), nullable=True
+    )
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -32,6 +35,7 @@ class User(Base):
     )
 
     org_unit: Mapped["OrgUnit"] = relationship("OrgUnit", back_populates="users")
+    job_catalog: Mapped["JobCatalog"] = relationship("JobCatalog", lazy="selectin")
     requisitions: Mapped[list["Requisition"]] = relationship(
         "Requisition", back_populates="owner"
     )

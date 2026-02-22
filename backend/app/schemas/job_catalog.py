@@ -10,6 +10,7 @@ class JobCatalogBase(BaseModel):
     level: str
     title: str
     monthly_cost: Decimal
+    hierarchy_level: int = 100
     currency: str = "BRL"
 
 
@@ -22,6 +23,7 @@ class JobCatalogUpdate(BaseModel):
     level: Optional[str] = None
     title: Optional[str] = None
     monthly_cost: Optional[Decimal] = None
+    hierarchy_level: Optional[int] = None
     currency: Optional[str] = None
     active: Optional[bool] = None
 
@@ -32,6 +34,7 @@ class JobCatalogResponse(BaseModel):
     level: str
     title: str
     monthly_cost: Decimal
+    hierarchy_level: int
     currency: str
     active: bool
     created_at: datetime

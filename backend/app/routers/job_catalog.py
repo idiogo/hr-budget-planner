@@ -29,7 +29,15 @@ async def list_job_catalog(
     if job_family:
         query = query.where(JobCatalog.job_family == job_family)
     
-    query = query.order_by(JobCatalog.job_family, JobCatalog.level)
+    # Non-admin users can only see jobs at or below their hierarchy level
+    if user.role != "ADMIN":
+        if user.job_catalog and user.job_catalog.hierarchy_level:
+            query = query.where(JobCatalog.hierarchy_level <= user.job_catalog.hierarchy_level)
+        else:
+            # User without a job assigned sees nothing (or only level 0)
+            query = query.where(JobCatalog.hierarchy_level <= 0)
+    
+    query = query.order_by(JobCatalog.hierarchy_level, JobCatalog.job_family, JobCatalog.level)
     
     result = await db.execute(query)
     return [JobCatalogResponse.model_validate(j) for j in result.scalars()]
@@ -49,6 +57,12 @@ async def get_job_catalog(
     
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Non-admin cannot view jobs above their hierarchy level
+    if user.role != "ADMIN":
+        user_level = user.job_catalog.hierarchy_level if user.job_catalog else 0
+        if job.hierarchy_level > user_level:
+            raise HTTPException(status_code=403, detail="Acesso negado a este cargo")
     
     return JobCatalogResponse.model_validate(job)
 
