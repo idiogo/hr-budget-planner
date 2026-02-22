@@ -243,7 +243,6 @@ export default function Requisitions() {
         return sum;
       }, 0);
 
-      const total = alocadoAmount + selectedAmount;
       const alocadoDisplay = Math.min(alocadoAmount, budgetAmount);
       const alocadoExcess = Math.max(0, alocadoAmount - budgetAmount);
       const remainingAfterAlocado = Math.max(0, budgetAmount - alocadoAmount);

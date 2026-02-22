@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { offersApi, orgUnitsApi, requisitionsApi, jobCatalogApi, budgetsApi, actualsApi } from '../api/client';
 import type { Offer, OrgUnit, OfferImpactResult, MonthImpact, Requisition, JobCatalog, Budget, Actual } from '../types';
 import {
@@ -20,7 +20,7 @@ import { useAuthStore } from '../stores/auth';
 import {
   CheckCircleIcon,
   ClockIcon,
-  ExclamationTriangleIcon,
+
   PlusIcon,
   CalendarIcon,
   TrashIcon,
@@ -44,14 +44,14 @@ export default function OfferGate() {
   const [jobs, setJobs] = useState<JobCatalog[]>([]);
   const [selectedOrgUnit, setSelectedOrgUnit] = useState<string>('');
   const [selectedOffers, setSelectedOffers] = useState<Set<string>>(new Set());
-  const [impactPreview, setImpactPreview] = useState<OfferImpactResult | null>(null);
+  
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [actuals, setActuals] = useState<Actual[]>([]);
   const [openReqs, setOpenReqs] = useState<Requisition[]>([]);
   const [selectedReqIds, setSelectedReqIds] = useState<Set<string>>(new Set());
   const [selectedOrgUnitData, setSelectedOrgUnitData] = useState<OrgUnit | null>(null);
   const [loading, setLoading] = useState(true);
-  const [previewLoading, setPreviewLoading] = useState(false);
+  
   
   // Quick offer from requisition
   const [isQuickOfferOpen, setIsQuickOfferOpen] = useState(false);
@@ -97,14 +97,7 @@ export default function OfferGate() {
     }
   }, [selectedOrgUnit]);
 
-  // Load impact preview when selection changes
-  useEffect(() => {
-    if (selectedOffers.size > 0) {
-      loadImpactPreview();
-    } else {
-      setImpactPreview(null);
-    }
-  }, [selectedOffers]);
+  // Chart updates reactively via useMemo - no need for separate preview loading
 
   const loadInitialData = async () => {
     try {
@@ -161,20 +154,6 @@ export default function OfferGate() {
       console.error('Failed to load budget data:', error);
     }
   };
-
-  const loadImpactPreview = useCallback(async () => {
-    if (selectedOffers.size === 0) return;
-    
-    setPreviewLoading(true);
-    try {
-      const result = await offersApi.previewImpact(Array.from(selectedOffers));
-      setImpactPreview(result);
-    } catch (error) {
-      console.error('Failed to load impact preview:', error);
-    } finally {
-      setPreviewLoading(false);
-    }
-  }, [selectedOffers]);
 
   const toggleOfferSelection = (offerId: string) => {
     const newSelection = new Set(selectedOffers);
@@ -243,10 +222,7 @@ export default function OfferGate() {
       setSelectedOffer(null);
       setNewStartDate('');
       loadOffers();
-      // Refresh impact if this offer was selected
-      if (selectedOffers.has(selectedOffer.id)) {
-        loadImpactPreview();
-      }
+      // Chart updates reactively
     } catch (error) {
       console.error('Failed to change start date:', error);
     }

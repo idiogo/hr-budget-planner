@@ -135,7 +135,6 @@ export default function Dashboard() {
       }, 0);
 
       // Check if over budget
-      const total = alocadoAmount + simulationAmount;
       
       // Cap alocado at budget for chart display
       const alocadoDisplay = Math.min(alocadoAmount, budgetAmount);
