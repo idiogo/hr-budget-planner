@@ -286,7 +286,7 @@ export default function Admin() {
         <Card
           title="Cargos e Salários"
           action={
-            <Button size="sm" onClick={() => { setEditingJob(null); setJobForm({ job_family: '', level: '', title: '', monthly_cost: '' }); setIsJobModalOpen(true); }}>
+            <Button size="sm" onClick={() => { setEditingJob(null); setJobForm({ job_family: '', level: '', title: '', monthly_cost: '', hierarchy_level: '100' }); setIsJobModalOpen(true); }}>
               <PlusIcon className="w-4 h-4 mr-1" />
               Novo Cargo
             </Button>
@@ -350,7 +350,7 @@ export default function Admin() {
         <Card
           title="Usuários"
           action={
-            <Button size="sm" onClick={() => { setEditingUser(null); setUserForm({ email: '', name: '', password: '', role: 'MANAGER', org_unit_id: '' }); setIsUserModalOpen(true); }}>
+            <Button size="sm" onClick={() => { setEditingUser(null); setUserForm({ email: '', name: '', password: '', role: 'MANAGER', org_unit_id: '', job_catalog_id: '' }); setIsUserModalOpen(true); }}>
               <PlusIcon className="w-4 h-4 mr-1" />
               Novo Usuário
             </Button>

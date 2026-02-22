@@ -611,7 +611,6 @@ export default function OfferGate() {
               </table>
             </div>
           </Card>
-        </div>
 
       </div>
 
