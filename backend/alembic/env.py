@@ -17,13 +17,8 @@ config = context.config
 # Override with environment variable if set
 database_url = os.getenv("DATABASE_URL")
 if database_url:
-    import re
-    if database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
-    elif database_url.startswith("postgresql://") and "+asyncpg" not in database_url:
-        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    if "sslmode=" in database_url:
-        database_url = re.sub(r'[?&]sslmode=[^&]*', '', database_url)
+    from app.db_url import normalize_database_url
+    database_url, _ = normalize_database_url(database_url)
     config.set_main_option("sqlalchemy.url", database_url)
 
 if config.config_file_name is not None:

@@ -17,15 +17,9 @@ from app.utils.security import get_password_hash
 
 
 async def seed_database():
-    import re
-    db_url = settings.database_url
-    if db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
-    elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
-        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    if "sslmode=" in db_url:
-        db_url = re.sub(r'[?&]sslmode=[^&]*', '', db_url)
-    engine = create_async_engine(db_url)
+    from app.db_url import normalize_database_url
+    db_url, connect_args = normalize_database_url(settings.database_url)
+    engine = create_async_engine(db_url, connect_args=connect_args)
     AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
     async with AsyncSessionLocal() as db:
