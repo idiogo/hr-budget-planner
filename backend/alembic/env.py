@@ -16,9 +16,10 @@ config = context.config
 
 # Override with environment variable if set
 database_url = os.getenv("DATABASE_URL")
+_connect_args = {}
 if database_url:
     from app.db_url import normalize_database_url
-    database_url, _ = normalize_database_url(database_url)
+    database_url, _connect_args = normalize_database_url(database_url)
     config.set_main_option("sqlalchemy.url", database_url)
 
 if config.config_file_name is not None:
@@ -52,6 +53,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=_connect_args,
     )
 
     async with connectable.connect() as connection:
