@@ -293,7 +293,11 @@ export default function OfferGate() {
       const defaultCost = Number(quickOfferReq.estimated_monthly_cost || quickOfferReq.job_catalog?.monthly_cost || 0);
       const costStr = quickOfferForm.proposed_monthly_cost.replace(',', '.');
       const cost = parseFloat(costStr) || defaultCost;
-      const startDate = quickOfferForm.start_date || undefined;
+      let startDate = quickOfferForm.start_date || undefined;
+      // Convert YYYY-MM to YYYY-MM-01 if needed
+      if (startDate && /^\d{4}-\d{2}$/.test(startDate)) {
+        startDate = `${startDate}-01`;
+      }
       
       await offersApi.create({
         requisition_id: quickOfferReq.id,
