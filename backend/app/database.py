@@ -6,8 +6,12 @@ from app.config import settings
 _db_url = settings.database_url
 if _db_url.startswith("postgres://"):
     _db_url = _db_url.replace("postgres://", "postgresql+asyncpg://", 1)
-elif _db_url.startswith("postgresql://"):
+elif _db_url.startswith("postgresql://") and "+asyncpg" not in _db_url:
     _db_url = _db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+# asyncpg doesn't support sslmode param
+if "sslmode=" in _db_url:
+    import re
+    _db_url = re.sub(r'[?&]sslmode=[^&]*', '', _db_url)
 
 engine = create_async_engine(
     _db_url,
