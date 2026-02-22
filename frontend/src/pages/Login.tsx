@@ -66,9 +66,6 @@ export default function Login() {
             Entrar
           </Button>
 
-          <p className="text-center text-sm text-gray-500">
-            Credenciais de demonstração: admin@example.com / password123
-          </p>
         </form>
       </div>
     </div>
