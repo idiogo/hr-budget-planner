@@ -290,19 +290,24 @@ export default function OfferGate() {
     e.preventDefault();
     if (!quickOfferReq) return;
     try {
-      const defaultCost = quickOfferReq.estimated_monthly_cost || quickOfferReq.job_catalog?.monthly_cost || 0;
+      const defaultCost = Number(quickOfferReq.estimated_monthly_cost || quickOfferReq.job_catalog?.monthly_cost || 0);
+      const costStr = quickOfferForm.proposed_monthly_cost.replace(',', '.');
+      const cost = parseFloat(costStr) || defaultCost;
+      const startDate = quickOfferForm.start_date || undefined;
+      
       await offersApi.create({
         requisition_id: quickOfferReq.id,
         candidate_name: quickOfferForm.candidate_name,
-        proposed_monthly_cost: parseFloat(quickOfferForm.proposed_monthly_cost) || defaultCost,
-        start_date: quickOfferForm.start_date || quickOfferReq.target_start_month || undefined,
+        proposed_monthly_cost: cost,
+        start_date: startDate,
       });
       setIsQuickOfferOpen(false);
       setQuickOfferReq(null);
       setQuickOfferForm({ candidate_name: '', proposed_monthly_cost: '', start_date: '' });
       loadOffers();
     } catch (error: any) {
-      alert(error?.response?.data?.detail || 'Erro ao criar proposta');
+      const msg = error?.response?.data?.detail || error?.message || 'Erro ao criar proposta';
+      alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
   };
 
