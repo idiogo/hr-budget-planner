@@ -28,8 +28,15 @@ export default function Admin() {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<JobCatalog | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isOrgModalOpen, setIsOrgModalOpen] = useState(false);
+  const [editingOrg, setEditingOrg] = useState<OrgUnit | null>(null);
   
   // Forms
+  const [orgForm, setOrgForm] = useState({
+    name: '',
+    currency: 'BRL',
+    overhead_multiplier: '1.00',
+  });
   const [jobForm, setJobForm] = useState({
     job_family: '',
     level: '',
@@ -151,6 +158,48 @@ export default function Admin() {
     } catch (error) {
       console.error('Failed to save user:', error);
     }
+  };
+
+  const handleSaveOrg = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const data = {
+        name: orgForm.name,
+        currency: orgForm.currency,
+        overhead_multiplier: parseFloat(orgForm.overhead_multiplier),
+      };
+      if (editingOrg) {
+        await orgUnitsApi.update(editingOrg.id, data);
+      } else {
+        await orgUnitsApi.create(data);
+      }
+      setIsOrgModalOpen(false);
+      setEditingOrg(null);
+      setOrgForm({ name: '', currency: 'BRL', overhead_multiplier: '1.00' });
+      loadData();
+    } catch (error) {
+      console.error('Failed to save org unit:', error);
+    }
+  };
+
+  const handleDeleteOrg = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta área? Todos os dados vinculados serão afetados.')) return;
+    try {
+      await orgUnitsApi.delete(id);
+      loadData();
+    } catch (error: any) {
+      alert(error?.response?.data?.detail || 'Erro ao excluir área');
+    }
+  };
+
+  const openEditOrg = (org: OrgUnit) => {
+    setEditingOrg(org);
+    setOrgForm({
+      name: org.name,
+      currency: org.currency,
+      overhead_multiplier: org.overhead_multiplier?.toString() || '1.00',
+    });
+    setIsOrgModalOpen(true);
   };
 
   const openEditJob = (job: JobCatalog) => {
@@ -336,7 +385,15 @@ export default function Admin() {
 
       {/* Org Units Tab */}
       {activeTab === 'org-units' && (
-        <Card title="Áreas">
+        <Card
+          title="Áreas"
+          action={
+            <Button size="sm" onClick={() => { setEditingOrg(null); setOrgForm({ name: '', currency: 'BRL', overhead_multiplier: '1.00' }); setIsOrgModalOpen(true); }}>
+              <PlusIcon className="w-4 h-4 mr-1" />
+              Nova Área
+            </Button>
+          }
+        >
           {loading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -351,6 +408,7 @@ export default function Admin() {
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Multiplicador Overhead</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Criado em</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -365,6 +423,14 @@ export default function Admin() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">{formatDateTime(ou.created_at)}</td>
+                      <td className="px-4 py-3 text-right space-x-2">
+                        <Button size="sm" variant="ghost" onClick={() => openEditOrg(ou)}>
+                          <PencilIcon className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDeleteOrg(ou.id)}>
+                          <TrashIcon className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -408,6 +474,37 @@ export default function Admin() {
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" variant="secondary" onClick={() => setIsJobModalOpen(false)}>Cancelar</Button>
             <Button type="submit">{editingJob ? 'Atualizar' : 'Criar'}</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Org Unit Modal */}
+      <Modal isOpen={isOrgModalOpen} onClose={() => setIsOrgModalOpen(false)} title={editingOrg ? 'Editar Área' : 'Nova Área'}>
+        <form onSubmit={handleSaveOrg} className="space-y-4">
+          <Input
+            label="Nome"
+            value={orgForm.name}
+            onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })}
+            placeholder="ex: Engenharia"
+            required
+          />
+          <Input
+            label="Moeda"
+            value={orgForm.currency}
+            onChange={(e) => setOrgForm({ ...orgForm, currency: e.target.value })}
+            placeholder="BRL"
+            maxLength={3}
+          />
+          <Input
+            label="Multiplicador Overhead"
+            type="number"
+            step="0.01"
+            value={orgForm.overhead_multiplier}
+            onChange={(e) => setOrgForm({ ...orgForm, overhead_multiplier: e.target.value })}
+          />
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button type="button" variant="secondary" onClick={() => setIsOrgModalOpen(false)}>Cancelar</Button>
+            <Button type="submit">{editingOrg ? 'Atualizar' : 'Criar'}</Button>
           </div>
         </form>
       </Modal>

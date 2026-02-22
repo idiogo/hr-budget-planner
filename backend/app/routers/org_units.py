@@ -101,6 +101,32 @@ async def create_org_unit(
     return OrgUnitResponse.model_validate(org_unit)
 
 
+@router.delete("/{org_unit_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_org_unit(
+    org_unit_id: uuid.UUID,
+    request: Request,
+    user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete org unit (admin only)."""
+    result = await db.execute(
+        select(OrgUnit).where(OrgUnit.id == org_unit_id)
+    )
+    org_unit = result.scalar_one_or_none()
+    
+    if not org_unit:
+        raise HTTPException(status_code=404, detail="Área não encontrada")
+    
+    await create_audit_log(
+        db, user.id, "DELETE", "org_unit", org_unit.id,
+        changes={"name": org_unit.name},
+        ip_address=get_client_ip(request)
+    )
+    
+    await db.delete(org_unit)
+    await db.commit()
+
+
 @router.patch("/{org_unit_id}", response_model=OrgUnitResponse)
 async def update_org_unit(
     org_unit_id: uuid.UUID,

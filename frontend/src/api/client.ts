@@ -111,6 +111,10 @@ export const orgUnitsApi = {
     const response = await api.patch(`/api/org-units/${id}`, data);
     return response.data;
   },
+  
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/api/org-units/${id}`);
+  },
 };
 
 // Budgets
