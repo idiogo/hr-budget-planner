@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
-import { offersApi, orgUnitsApi, requisitionsApi, jobCatalogApi } from '../api/client';
-import type { Offer, OrgUnit, OfferImpactResult, MonthImpact, Requisition, JobCatalog } from '../types';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { offersApi, orgUnitsApi, requisitionsApi, jobCatalogApi, budgetsApi, actualsApi } from '../api/client';
+import type { Offer, OrgUnit, OfferImpactResult, MonthImpact, Requisition, JobCatalog, Budget, Actual } from '../types';
 import {
   formatCurrency,
   formatMonth,
@@ -25,6 +25,16 @@ import {
   CalendarIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 export default function OfferGate() {
   const { user } = useAuthStore();
@@ -35,8 +45,21 @@ export default function OfferGate() {
   const [selectedOrgUnit, setSelectedOrgUnit] = useState<string>('');
   const [selectedOffers, setSelectedOffers] = useState<Set<string>>(new Set());
   const [impactPreview, setImpactPreview] = useState<OfferImpactResult | null>(null);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [actuals, setActuals] = useState<Actual[]>([]);
+  const [openReqs, setOpenReqs] = useState<Requisition[]>([]);
+  const [selectedOrgUnitData, setSelectedOrgUnitData] = useState<OrgUnit | null>(null);
   const [loading, setLoading] = useState(true);
   const [previewLoading, setPreviewLoading] = useState(false);
+  
+  // Quick offer from requisition
+  const [isQuickOfferOpen, setIsQuickOfferOpen] = useState(false);
+  const [quickOfferReq, setQuickOfferReq] = useState<Requisition | null>(null);
+  const [quickOfferForm, setQuickOfferForm] = useState({
+    candidate_name: '',
+    proposed_monthly_cost: '',
+    start_date: '',
+  });
   
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -69,6 +92,7 @@ export default function OfferGate() {
     if (selectedOrgUnit) {
       loadOffers();
       loadRequisitions();
+      loadBudgetData();
     }
   }, [selectedOrgUnit]);
 
@@ -113,11 +137,27 @@ export default function OfferGate() {
     try {
       const data = await requisitionsApi.list({
         org_unit_id: selectedOrgUnit,
-        has_candidate_ready: true,
       });
       setRequisitions(data);
+      setOpenReqs(data.filter((r) => ['OPEN', 'INTERVIEWING'].includes(r.status)));
     } catch (error) {
       console.error('Failed to load requisitions:', error);
+    }
+  };
+
+  const loadBudgetData = async () => {
+    if (!selectedOrgUnit) return;
+    try {
+      const [budgetData, actualData] = await Promise.all([
+        budgetsApi.list(selectedOrgUnit),
+        actualsApi.list(selectedOrgUnit),
+      ]);
+      setBudgets(budgetData);
+      setActuals(actualData);
+      const org = orgUnits.find((o) => o.id === selectedOrgUnit);
+      setSelectedOrgUnitData(org || null);
+    } catch (error) {
+      console.error('Failed to load budget data:', error);
     }
   };
 
@@ -229,6 +269,104 @@ export default function OfferGate() {
     ]);
   };
 
+  // Quick offer handler
+  const handleQuickOffer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickOfferReq) return;
+    try {
+      const defaultCost = quickOfferReq.estimated_monthly_cost || quickOfferReq.job_catalog?.monthly_cost || 0;
+      await offersApi.create({
+        requisition_id: quickOfferReq.id,
+        candidate_name: quickOfferForm.candidate_name,
+        proposed_monthly_cost: parseFloat(quickOfferForm.proposed_monthly_cost) || defaultCost,
+        start_date: quickOfferForm.start_date || quickOfferReq.target_start_month || undefined,
+      });
+      setIsQuickOfferOpen(false);
+      setQuickOfferReq(null);
+      setQuickOfferForm({ candidate_name: '', proposed_monthly_cost: '', start_date: '' });
+      loadOffers();
+    } catch (error: any) {
+      alert(error?.response?.data?.detail || 'Erro ao criar proposta');
+    }
+  };
+
+  const openQuickOffer = (req: Requisition) => {
+    setQuickOfferReq(req);
+    const defaultCost = req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0;
+    setQuickOfferForm({
+      candidate_name: '',
+      proposed_monthly_cost: defaultCost.toString(),
+      start_date: req.target_start_month || '',
+    });
+    setIsQuickOfferOpen(true);
+  };
+
+  // Chart data
+  const overheadMultiplier = selectedOrgUnitData?.overhead_multiplier || 1.8;
+  
+  const months = useMemo(() => {
+    const year = new Date().getFullYear();
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = (i + 1).toString().padStart(2, '0');
+      return `${year}-${m}`;
+    });
+  }, []);
+
+  const chartData = useMemo(() => {
+    const selectedOffersList = offers.filter((o) => selectedOffers.has(o.id));
+    
+    return months.map((month) => {
+      const budget = budgets.find((b) => b.month === month);
+      const actual = actuals.find((a) => a.month === month);
+      const budgetAmount = budget?.approved_amount || 0;
+      const alocadoAmount = actual?.amount || 0;
+
+      // Impact of selected offers
+      const selectedAmount = selectedOffersList.reduce((sum, offer) => {
+        if (offer.start_date && offer.start_date.substring(0, 7) <= month) {
+          return sum + (offer.proposed_monthly_cost || 0) * overheadMultiplier;
+        }
+        return sum;
+      }, 0);
+
+      const alocadoDisplay = Math.min(alocadoAmount, budgetAmount);
+      const alocadoExcess = Math.max(0, alocadoAmount - budgetAmount);
+      const remainingAfterAlocado = Math.max(0, budgetAmount - alocadoAmount);
+      const selectedWithinBudget = Math.min(selectedAmount, remainingAfterAlocado);
+      const naoAlocado = Math.max(0, budgetAmount - alocadoAmount - selectedWithinBudget);
+      const excedente = alocadoExcess + Math.max(0, selectedAmount - selectedWithinBudget);
+
+      return {
+        month,
+        monthLabel: formatMonth(month),
+        budget: budgetAmount,
+        alocado: alocadoDisplay,
+        naoAlocado,
+        selecionadas: selectedWithinBudget,
+        excedente,
+      };
+    });
+  }, [months, budgets, actuals, offers, selectedOffers, overheadMultiplier]);
+
+  const ChartTooltip = ({ active, payload, label }: any) => {
+    if (active && payload?.length) {
+      const data = payload[0]?.payload;
+      return (
+        <div className="bg-white p-3 border rounded-lg shadow-lg">
+          <p className="font-medium text-gray-900 mb-2">{label}</p>
+          <p className="text-sm text-gray-600">Budget: <span className="font-medium">{formatCurrency(data.budget)}</span></p>
+          <p className="text-sm text-green-600">Alocado: <span className="font-medium">{formatCurrency(data.alocado)}</span></p>
+          <p className="text-sm text-purple-600">Ofertas Selecionadas: <span className="font-medium">{formatCurrency(data.selecionadas)}</span></p>
+          <p className="text-sm text-blue-600">Não Alocado: <span className="font-medium">{formatCurrency(data.naoAlocado)}</span></p>
+          {data.excedente > 0 && (
+            <p className="text-sm text-red-600 font-bold">⚠️ Excedente: <span>{formatCurrency(data.excedente)}</span></p>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
+
   const proposedOffers = offers.filter((o) => o.status === 'PROPOSED');
   const otherOffers = offers.filter((o) => o.status !== 'PROPOSED');
 
@@ -253,9 +391,73 @@ export default function OfferGate() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Offers List */}
-        <div className="lg:col-span-2 space-y-4">
+      {/* Impact Chart */}
+      <Card title={`📊 Impacto Orçamentário ${selectedOffers.size > 0 ? `(${selectedOffers.size} proposta(s) selecionada(s))` : ''}`}>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="monthLabel" />
+              <YAxis tickFormatter={(v) => new Intl.NumberFormat('pt-BR', { notation: 'compact', compactDisplay: 'short' }).format(v)} />
+              <Tooltip content={<ChartTooltip />} />
+              <Legend />
+              <Bar dataKey="alocado" name="Alocado" stackId="a" fill="#22c55e" />
+              <Bar dataKey="selecionadas" name="Ofertas Selecionadas" stackId="a" fill="#a855f7" />
+              <Bar dataKey="naoAlocado" name="Não Alocado" stackId="a" fill="#3b82f6" />
+              <Bar dataKey="excedente" name="Excedente (acima do orçamento)" stackId="a" fill="#ef4444" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      {/* Open Requisitions - Vagas Sendo Trabalhadas */}
+      {openReqs.length > 0 && (
+        <Card title={`🔍 Vagas Sendo Trabalhadas (${openReqs.length})`}>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Título</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cargo</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prioridade</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Custo c/ Overhead</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Candidato?</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {openReqs.map((req) => {
+                  const cost = (req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0) * overheadMultiplier;
+                  return (
+                    <tr key={req.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{req.title}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{req.job_catalog?.title}</td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge color={getPriorityColor(req.priority)}>{req.priority}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge color={req.status === 'INTERVIEWING' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}>
+                          {req.status === 'INTERVIEWING' ? 'Entrevistas' : 'Aberta'}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(cost)}</td>
+                      <td className="px-4 py-3 text-center text-lg">{req.has_candidate_ready ? '✅' : '❌'}</td>
+                      <td className="px-4 py-3 text-right">
+                        <Button size="sm" onClick={() => openQuickOffer(req)}>
+                          Criar Proposta
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 gap-6">
           {/* Proposed Offers - Main Action Area */}
           <Card
             title={`📋 Propostas Pendentes (${proposedOffers.length})`}
@@ -411,77 +613,6 @@ export default function OfferGate() {
           </Card>
         </div>
 
-        {/* Right: Impact Preview Panel */}
-        <div className="space-y-4">
-          <Card title="📊 Prévia de Impacto">
-            {selectedOffers.size === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <ExclamationTriangleIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>Selecione propostas para ver o impacto no orçamento</p>
-              </div>
-            ) : previewLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-              </div>
-            ) : impactPreview ? (
-              <div className="space-y-3">
-                {Object.values(impactPreview.impacts).map((impact: MonthImpact) => (
-                  <div
-                    key={impact.month}
-                    className={`p-3 rounded-lg border ${
-                      impact.is_bottleneck ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">{formatMonth(impact.month)}</span>
-                      {impact.is_bottleneck && (
-                        <Badge color="bg-red-100 text-red-800">⚠️ Gargalo</Badge>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-gray-500">Antes:</span>
-                        <span className={`ml-1 ${getStatusColor(impact.status_before)}`}>
-                          {getStatusEmoji(impact.status_before)} {formatCurrency(impact.remaining_before)}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Depois:</span>
-                        <span className={`ml-1 font-medium ${getStatusColor(impact.status_after)}`}>
-                          {getStatusEmoji(impact.status_after)} {formatCurrency(impact.remaining_after)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-500 mt-1">
-                      Delta: <span className="text-red-600 font-medium">{formatCurrency(impact.delta)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </Card>
-
-          {/* What-If Tab */}
-          <Card title="🔮 Simulação What-If">
-            <div className="space-y-3">
-              <p className="text-sm text-gray-500">
-                Simule a adição de cargos hipotéticos para ver o impacto no orçamento.
-              </p>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setWhatIfPositions([]);
-                  setWhatIfResult(null);
-                  setIsWhatIfModalOpen(true);
-                }}
-              >
-                <PlusIcon className="w-4 h-4 mr-1" />
-                Nova Simulação
-              </Button>
-            </div>
-          </Card>
-        </div>
       </div>
 
       {/* Create Offer Modal */}
@@ -650,6 +781,41 @@ export default function OfferGate() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Quick Offer from Requisition */}
+      <Modal isOpen={isQuickOfferOpen} onClose={() => setIsQuickOfferOpen(false)} title={`Criar Proposta — ${quickOfferReq?.title || ''}`}>
+        <form onSubmit={handleQuickOffer} className="space-y-4">
+          {quickOfferReq && (
+            <div className="bg-gray-50 p-3 rounded-lg text-sm">
+              <p><strong>Cargo:</strong> {quickOfferReq.job_catalog?.title}</p>
+              <p><strong>Custo padrão:</strong> {formatCurrency(quickOfferReq.estimated_monthly_cost || quickOfferReq.job_catalog?.monthly_cost || 0)}</p>
+            </div>
+          )}
+          <Input
+            label="Nome do Candidato"
+            value={quickOfferForm.candidate_name}
+            onChange={(e) => setQuickOfferForm({ ...quickOfferForm, candidate_name: e.target.value })}
+            required
+          />
+          <Input
+            label="Custo Mensal (deixe o padrão ou ajuste)"
+            type="number"
+            value={quickOfferForm.proposed_monthly_cost}
+            onChange={(e) => setQuickOfferForm({ ...quickOfferForm, proposed_monthly_cost: e.target.value })}
+            required
+          />
+          <Input
+            label="Data de Início"
+            type="date"
+            value={quickOfferForm.start_date}
+            onChange={(e) => setQuickOfferForm({ ...quickOfferForm, start_date: e.target.value })}
+          />
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button type="button" variant="secondary" onClick={() => setIsQuickOfferOpen(false)}>Cancelar</Button>
+            <Button type="submit">Criar Proposta</Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );
