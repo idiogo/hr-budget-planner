@@ -48,6 +48,7 @@ export default function OfferGate() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [actuals, setActuals] = useState<Actual[]>([]);
   const [openReqs, setOpenReqs] = useState<Requisition[]>([]);
+  const [selectedReqIds, setSelectedReqIds] = useState<Set<string>>(new Set());
   const [selectedOrgUnitData, setSelectedOrgUnitData] = useState<OrgUnit | null>(null);
   const [loading, setLoading] = useState(true);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -269,6 +270,21 @@ export default function OfferGate() {
     ]);
   };
 
+  const toggleReqSelection = (reqId: string) => {
+    const newSet = new Set(selectedReqIds);
+    if (newSet.has(reqId)) newSet.delete(reqId);
+    else newSet.add(reqId);
+    setSelectedReqIds(newSet);
+  };
+
+  const toggleAllReqs = () => {
+    if (selectedReqIds.size === openReqs.length) {
+      setSelectedReqIds(new Set());
+    } else {
+      setSelectedReqIds(new Set(openReqs.map((r) => r.id)));
+    }
+  };
+
   // Quick offer handler
   const handleQuickOffer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -312,6 +328,8 @@ export default function OfferGate() {
     });
   }, []);
 
+  const selectedReqs = openReqs.filter((r) => selectedReqIds.has(r.id));
+
   const chartData = useMemo(() => {
     const selectedOffersList = offers.filter((o) => selectedOffers.has(o.id));
     
@@ -322,12 +340,24 @@ export default function OfferGate() {
       const alocadoAmount = actual?.amount || 0;
 
       // Impact of selected offers
-      const selectedAmount = selectedOffersList.reduce((sum, offer) => {
+      const offerAmount = selectedOffersList.reduce((sum, offer) => {
         if (offer.start_date && offer.start_date.substring(0, 7) <= month) {
           return sum + (offer.proposed_monthly_cost || 0) * overheadMultiplier;
         }
         return sum;
       }, 0);
+
+      // Impact of selected requisitions (vagas sendo trabalhadas)
+      const reqAmount = selectedReqs.reduce((sum, req) => {
+        const startMonth = req.target_start_month || month; // if no target, assume current
+        if (startMonth <= month) {
+          const cost = req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0;
+          return sum + cost * overheadMultiplier;
+        }
+        return sum;
+      }, 0);
+
+      const selectedAmount = offerAmount + reqAmount;
 
       const alocadoDisplay = Math.min(alocadoAmount, budgetAmount);
       const alocadoExcess = Math.max(0, alocadoAmount - budgetAmount);
@@ -346,7 +376,7 @@ export default function OfferGate() {
         excedente,
       };
     });
-  }, [months, budgets, actuals, offers, selectedOffers, overheadMultiplier]);
+  }, [months, budgets, actuals, offers, selectedOffers, selectedReqs, overheadMultiplier]);
 
   const ChartTooltip = ({ active, payload, label }: any) => {
     if (active && payload?.length) {
@@ -392,7 +422,7 @@ export default function OfferGate() {
       </div>
 
       {/* Impact Chart */}
-      <Card title={`📊 Impacto Orçamentário ${selectedOffers.size > 0 ? `(${selectedOffers.size} proposta(s) selecionada(s))` : ''}`}>
+      <Card title={`📊 Impacto Orçamentário ${selectedOffers.size + selectedReqIds.size > 0 ? `(${selectedReqIds.size > 0 ? `${selectedReqIds.size} vaga(s)` : ''}${selectedOffers.size > 0 && selectedReqIds.size > 0 ? ' + ' : ''}${selectedOffers.size > 0 ? `${selectedOffers.size} proposta(s)` : ''})` : ''}`}>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -412,11 +442,28 @@ export default function OfferGate() {
 
       {/* Open Requisitions - Vagas Sendo Trabalhadas */}
       {openReqs.length > 0 && (
-        <Card title={`🔍 Vagas Sendo Trabalhadas (${openReqs.length})`}>
+        <Card
+          title={`🔍 Vagas Sendo Trabalhadas (${openReqs.length})${selectedReqIds.size > 0 ? ` — ${selectedReqIds.size} selecionada(s)` : ''}`}
+          action={
+            selectedReqIds.size > 0 && (
+              <span className="text-sm font-medium text-purple-600">
+                Custo mensal: {formatCurrency(selectedReqs.reduce((sum, r) => sum + (r.estimated_monthly_cost || r.job_catalog?.monthly_cost || 0) * overheadMultiplier, 0))}
+              </span>
+            )
+          }
+        >
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedReqIds.size === openReqs.length && openReqs.length > 0}
+                      onChange={toggleAllReqs}
+                      className="rounded border-gray-300 text-primary-600"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Título</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cargo</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prioridade</th>
@@ -429,8 +476,17 @@ export default function OfferGate() {
               <tbody className="divide-y divide-gray-200">
                 {openReqs.map((req) => {
                   const cost = (req.estimated_monthly_cost || req.job_catalog?.monthly_cost || 0) * overheadMultiplier;
+                  const isSelected = selectedReqIds.has(req.id);
                   return (
-                    <tr key={req.id} className="hover:bg-gray-50">
+                    <tr key={req.id} className={`hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-purple-50' : ''}`} onClick={() => toggleReqSelection(req.id)}>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleReqSelection(req.id)}
+                          className="rounded border-gray-300 text-primary-600"
+                        />
+                      </td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">{req.title}</td>
                       <td className="px-4 py-3 text-sm text-gray-500">{req.job_catalog?.title}</td>
                       <td className="px-4 py-3 text-center">
